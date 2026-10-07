@@ -27,7 +27,15 @@ The Flutter mobile/cross-platform Admin screens and components are located in:
    - Security verification notice banner: *"Access code is shared by your organisation owner."*
    - Create Account button and quick switch back to Login
 
-3. **Backend Services & Theme**
+3. **Admin 03 – Dashboard Screen** ([lib/admin_panel/screens/admin_dashboard_screen.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/screens/admin_dashboard_screen.dart))
+   - Header: "Dashboard • Mon, 15 Sep 2025" with notification bell badge & sign out menu
+   - 4 KPI metric cards: **124** Total Items, **86** Rented, **28** Available, **10** In Transit
+   - **Today** section: Deliveries (5) and Pickups (3) with *"No delays today"* green badge
+   - **Recent Activity** list: Sofa delivered, Pickup scheduled, New booking
+   - Floating Bottom Navigation Bar (Dashboard, Inventory, Orders, Customers, Reports)
+   - Mock Data Model: [lib/admin_panel/models/dashboard_mock_data.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/dashboard_mock_data.dart) (ready for real API integration)
+
+4. **Backend Services & Theme**
    - **Authentication & Firestore**: [lib/admin_panel/services/admin_auth_service.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/services/admin_auth_service.dart) (Firebase Auth + writes admin records to Firestore `admins/{uid}`)
    - **Theme & Colors**: [lib/admin_panel/theme/admin_colors.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/theme/admin_colors.dart) (Dark indigo gradients, glowing purple buttons)
    - **Reusable Widgets**: [lib/admin_panel/widgets/admin_text_field.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_text_field.dart), [lib/admin_panel/widgets/admin_button.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_button.dart), [lib/admin_panel/widgets/admin_logo.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_logo.dart)
