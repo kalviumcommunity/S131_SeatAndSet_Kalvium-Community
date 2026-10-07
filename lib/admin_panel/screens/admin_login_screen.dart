@@ -5,6 +5,7 @@ import '../widgets/admin_text_field.dart';
 import '../widgets/admin_button.dart';
 import '../services/admin_auth_service.dart';
 import 'admin_signup_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -57,6 +58,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           ),
         ),
       );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -69,6 +74,16 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               const SizedBox(width: 10),
               Expanded(child: Text(error)),
             ],
+          ),
+          action: SnackBarAction(
+            label: 'Open Mock',
+            textColor: Colors.amberAccent,
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+              );
+            },
           ),
         ),
       );
