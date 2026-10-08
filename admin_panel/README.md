@@ -35,7 +35,16 @@ The Flutter mobile/cross-platform Admin screens and components are located in:
    - Floating Bottom Navigation Bar (Dashboard, Inventory, Orders, Customers, Reports)
    - Mock Data Model: [lib/admin_panel/models/dashboard_mock_data.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/dashboard_mock_data.dart) (ready for real API integration)
 
-4. **Backend Services & Theme**
+4. **Admin 04 – Inventory Screen** ([lib/admin_panel/screens/admin_inventory_screen.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/screens/admin_inventory_screen.dart))
+   - Header: "Inventory" with purple circular notification bell and red indicator
+   - Real-time search bar ("Search items...") with live SKU and name query filtering
+   - Filter button with bottom sheet (All, Available, Rented, In Transit)
+   - Custom vector furniture illustration thumbnails ([lib/admin_panel/widgets/furniture_thumbnail.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/furniture_thumbnail.dart)) for Sofa, Study Table, Office Chair, Bed, and Dining Table
+   - Status badges: Rented (soft red), Available (soft green), In Transit (soft orange)
+   - Action popup menu (`...`) per item (View Details, Edit Item, Change Status)
+   - Seamless navigation connecting between Dashboard and Inventory tabs
+
+5. **Backend Services & Theme**
    - **Authentication & Firestore**: [lib/admin_panel/services/admin_auth_service.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/services/admin_auth_service.dart) (Firebase Auth + writes admin records to Firestore `admins/{uid}`)
    - **Theme & Colors**: [lib/admin_panel/theme/admin_colors.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/theme/admin_colors.dart) (Dark indigo gradients, glowing purple buttons)
    - **Reusable Widgets**: [lib/admin_panel/widgets/admin_text_field.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_text_field.dart), [lib/admin_panel/widgets/admin_button.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_button.dart), [lib/admin_panel/widgets/admin_logo.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_logo.dart)
