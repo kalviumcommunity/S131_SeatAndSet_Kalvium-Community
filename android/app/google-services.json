@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "91662202252",
-    "project_id": "seat-and-set",
-    "storage_bucket": "seat-and-set.firebasestorage.app"
+    "project_number": "313935939868",
+    "project_id": "seatandset-1",
+    "storage_bucket": "seatandset-1.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:91662202252:android:6d9bdde9dd2a67403152a9",
+        "mobilesdk_app_id": "1:313935939868:android:9ed3fc126229536e7a52d9",
         "android_client_info": {
           "package_name": "com.example.seat_and_set"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCcCyQcCCmRDk9yr5PbBU2kqcp8KFJ9hHs"
+          "current_key": "AIzaSyAUWINfQmUWd1IuGJjDmzc050SwRYlivvo"
         }
       ],
       "services": {

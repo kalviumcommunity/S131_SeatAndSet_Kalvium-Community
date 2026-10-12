@@ -1,3 +1,6 @@
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum InventoryStatus {
   rented,
   available,
@@ -38,6 +41,67 @@ class InventoryItem {
     }
   }
 
+  /// Convert this item into a Firestore-compatible map.
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'sku': sku,
+      'status': status.name,
+      'type': type.name,
+    };
+  }
+
+  /// Create an item from a Firestore document.
+  factory InventoryItem.fromMap(
+    String documentId,
+    Map<String, dynamic> map,
+  ) {
+    return InventoryItem(
+      id: documentId,
+      name: _readRequiredString(map, 'name'),
+      sku: _readRequiredString(map, 'sku'),
+      status: InventoryStatus.values.firstWhere(
+        (value) => value.name == map['status'],
+        orElse: () => InventoryStatus.available,
+      ),
+      type: FurnitureType.values.firstWhere(
+        (value) => value.name == map['type'],
+        orElse: () => FurnitureType.sofa,
+      ),
+    );
+  }
+
+  /// Create an item directly from a Firestore document snapshot.
+  factory InventoryItem.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data();
+
+    if (data == null) {
+      throw FormatException(
+        'Furniture document ${document.id} has no data.',
+      );
+    }
+
+    return InventoryItem.fromMap(document.id, data);
+  }
+
+  static String _readRequiredString(
+    Map<String, dynamic> map,
+    String field,
+  ) {
+    final value = map[field];
+
+    if (value is! String || value.trim().isEmpty) {
+      throw FormatException(
+        'Furniture field "$field" is missing or invalid.',
+      );
+    }
+
+    return value.trim();
+  }
+
+  /// Existing mock data retained for the current UI.
   static List<InventoryItem> get mockItems => const [
         InventoryItem(
           id: '1',

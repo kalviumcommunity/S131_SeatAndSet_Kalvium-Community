@@ -25,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -47,29 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBFiJRCuxuLjd5xWeOqKfHQFsPuIq2ot0w',
-    appId: '1:91662202252:web:6910ac985227b40a3152a9',
-    messagingSenderId: '91662202252',
-    projectId: 'seat-and-set',
-    authDomain: 'seat-and-set.firebaseapp.com',
-    storageBucket: 'seat-and-set.firebasestorage.app',
-    measurementId: 'G-BPTDPCM61K',
+    apiKey: 'AIzaSyBhyaU33abWk6e6F2Ujs0_RXTDmS0CZX7E',
+    appId: '1:313935939868:web:64d581215dae5bb47a52d9',
+    messagingSenderId: '313935939868',
+    projectId: 'seatandset-1',
+    authDomain: 'seatandset-1.firebaseapp.com',
+    storageBucket: 'seatandset-1.firebasestorage.app',
+    measurementId: 'G-PL3MTDG5HX',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCcCyQcCCmRDk9yr5PbBU2kqcp8KFJ9hHs',
-    appId: '1:91662202252:android:6d9bdde9dd2a67403152a9',
-    messagingSenderId: '91662202252',
-    projectId: 'seat-and-set',
-    storageBucket: 'seat-and-set.firebasestorage.app',
+    apiKey: 'AIzaSyAUWINfQmUWd1IuGJjDmzc050SwRYlivvo',
+    appId: '1:313935939868:android:9ed3fc126229536e7a52d9',
+    messagingSenderId: '313935939868',
+    projectId: 'seatandset-1',
+    storageBucket: 'seatandset-1.firebasestorage.app',
+  );
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDUDCkCD5679avqpZ3J6q09usaAvej1Luk',
+    appId: '1:313935939868:ios:95d7ab7053ab6b1f7a52d9',
+    messagingSenderId: '313935939868',
+    projectId: 'seatandset-1',
+    storageBucket: 'seatandset-1.firebasestorage.app',
+    iosBundleId: 'com.example.seatAndSet',
+  );
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyDUDCkCD5679avqpZ3J6q09usaAvej1Luk',
+    appId: '1:313935939868:ios:95d7ab7053ab6b1f7a52d9',
+    messagingSenderId: '313935939868',
+    projectId: 'seatandset-1',
+    storageBucket: 'seatandset-1.firebasestorage.app',
+    iosBundleId: 'com.example.seatAndSet',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDMg7Kls1T5OtxXsniv3UW-SHoMdvKN7lQ',
-    appId: '1:91662202252:ios:da0421365fd443283152a9',
-    messagingSenderId: '91662202252',
-    projectId: 'seat-and-set',
-    storageBucket: 'seat-and-set.firebasestorage.app',
-    iosBundleId: 'com.example.seatAndSet',
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBhyaU33abWk6e6F2Ujs0_RXTDmS0CZX7E',
+    appId: '1:313935939868:web:fbdf84ce01d087067a52d9',
+    messagingSenderId: '313935939868',
+    projectId: 'seatandset-1',
+    authDomain: 'seatandset-1.firebaseapp.com',
+    storageBucket: 'seatandset-1.firebasestorage.app',
+    measurementId: 'G-FMVMVEPSPR',
   );
 }
