@@ -7,26 +7,39 @@ import '../services/inventory_service.dart';
 import '../widgets/furniture_thumbnail.dart';
 import 'admin_dashboard_screen.dart';
 
+
 class AdminInventoryScreen extends StatefulWidget {
-  const AdminInventoryScreen({super.key});
+  const AdminInventoryScreen({
+    super.key,
+    this.inventoryService,
+  });
+
+  final InventoryService? inventoryService;
 
   @override
   State<AdminInventoryScreen> createState() =>
       _AdminInventoryScreenState();
 }
 
+
 class _AdminInventoryScreenState extends State<AdminInventoryScreen> {
   final TextEditingController _searchController =
       TextEditingController();
-  final InventoryService _inventoryService = InventoryService();
+  late final InventoryService _inventoryService;
 
   InventoryStatus? _selectedStatusFilter;
 
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(_onSearchChanged);
-  }
+  
+@override
+void initState() {
+  super.initState();
+
+  _inventoryService =
+      widget.inventoryService ?? InventoryService();
+
+  _searchController.addListener(_onSearchChanged);
+}
+
 
   void _onSearchChanged() {
     if (mounted) setState(() {});

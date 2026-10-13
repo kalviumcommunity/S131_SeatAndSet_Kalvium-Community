@@ -12,16 +12,84 @@ class BookingService {
   CollectionReference<Map<String, dynamic>> get _bookingsCollection =>
       _firestore.collection('bookings');
 
-  /// Retrieves all bookings for a particular furniture item.
+  CollectionReference<Map<String, dynamic>> get _locksCollection =>
+      _firestore.collection('furniture_booking_locks');
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  bool _blocksAvailability(BookingStatus status) {
+    return status != BookingStatus.cancelled &&
+        status != BookingStatus.returned;
+  }
+
+  DateTime _readDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+
+    throw FormatException('Invalid booking date in Firestore.');
+  }
+
+  Map<String, dynamic> _reservationData(Booking booking) {
+    return {
+      'startDate': Timestamp.fromDate(booking.startDate),
+      'endDate': Timestamp.fromDate(booking.endDate),
+      'status': booking.status.name,
+    };
+  }
+
+  bool _reservationConflicts(
+    DateTime proposedStart,
+    DateTime proposedEnd,
+    Map<String, dynamic> existing,
+  ) {
+    final status = existing['status'] as String?;
+
+    if (status == BookingStatus.cancelled.name ||
+        status == BookingStatus.returned.name) {
+      return false;
+    }
+
+    final existingStart = _readDate(existing['startDate']);
+    final existingEnd = _readDate(existing['endDate']);
+
+    // Half-open intervals: [startDate, endDate).
+    return proposedStart.isBefore(existingEnd) &&
+        existingStart.isBefore(proposedEnd);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fetch bookings
+  // ---------------------------------------------------------------------------
+
+  Future<List<Booking>> getAllBookings() async {
+    final snapshot = await _bookingsCollection.get();
+
+    return snapshot.docs
+        .map((doc) => Booking.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  Stream<List<Booking>> watchAllBookings() {
+    return _bookingsCollection.snapshots().map(
+          (snapshot) => snapshot.docs
+              .map((doc) => Booking.fromMap(doc.id, doc.data()))
+              .toList(),
+        );
+  }
+
   Future<List<Booking>> getBookingsForFurniture(
     String furnitureId,
   ) async {
-    if (furnitureId.trim().isEmpty) {
+    final id = furnitureId.trim();
+
+    if (id.isEmpty) {
       throw ArgumentError('Furniture ID cannot be empty.');
     }
 
     final snapshot = await _bookingsCollection
-        .where('furnitureId', isEqualTo: furnitureId.trim())
+        .where('furnitureId', isEqualTo: id)
         .get();
 
     return snapshot.docs
@@ -29,16 +97,17 @@ class BookingService {
         .toList();
   }
 
-  /// Watches bookings for a particular furniture item in real time.
   Stream<List<Booking>> watchBookingsForFurniture(
     String furnitureId,
   ) {
-    if (furnitureId.trim().isEmpty) {
+    final id = furnitureId.trim();
+
+    if (id.isEmpty) {
       throw ArgumentError('Furniture ID cannot be empty.');
     }
 
     return _bookingsCollection
-        .where('furnitureId', isEqualTo: furnitureId.trim())
+        .where('furnitureId', isEqualTo: id)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -47,75 +116,375 @@ class BookingService {
         );
   }
 
-  /// Checks whether a proposed booking overlaps an existing booking.
+  Future<List<Booking>> getBookingsForCustomer(
+    String customerId,
+  ) async {
+    final id = customerId.trim();
+
+    if (id.isEmpty) {
+      throw ArgumentError('Customer ID cannot be empty.');
+    }
+
+    final snapshot = await _bookingsCollection
+        .where('customerId', isEqualTo: id)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => Booking.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  Stream<List<Booking>> watchBookingsForCustomer(
+    String customerId,
+  ) {
+    final id = customerId.trim();
+
+    if (id.isEmpty) {
+      throw ArgumentError('Customer ID cannot be empty.');
+    }
+
+    return _bookingsCollection
+        .where('customerId', isEqualTo: id)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => Booking.fromMap(doc.id, doc.data()))
+              .toList(),
+        );
+  }
+
+  Future<Booking?> getBookingById(String bookingId) async {
+    final id = bookingId.trim();
+
+    if (id.isEmpty) {
+      throw ArgumentError('Booking ID cannot be empty.');
+    }
+
+    final snapshot = await _bookingsCollection.doc(id).get();
+
+    if (!snapshot.exists || snapshot.data() == null) {
+      return null;
+    }
+
+    return Booking.fromMap(snapshot.id, snapshot.data()!);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Conflict detection
+  // ---------------------------------------------------------------------------
+
+  /// Checks existing booking records and the reservation lock.
+  ///
+  /// New bookings created through this service are tracked in the lock document.
+  /// Existing bookings created before this mechanism was added must be migrated
+  /// into their corresponding lock documents.
   Future<bool> hasBookingConflict(Booking proposedBooking) async {
     proposedBooking.validate();
 
-    final existingBookings = await getBookingsForFurniture(
-      proposedBooking.furnitureId,
-    );
+    final furnitureId = proposedBooking.furnitureId.trim();
+    final lockRef = _locksCollection.doc(furnitureId);
+
+    final lockSnapshot = await lockRef.get();
+    final reservations =
+        lockSnapshot.data()?['reservations'] as Map<String, dynamic>? ?? {};
+
+    for (final entry in reservations.entries) {
+      if (entry.key == proposedBooking.id) continue;
+
+      final reservation =
+          Map<String, dynamic>.from(entry.value as Map);
+
+      if (_reservationConflicts(
+        proposedBooking.startDate,
+        proposedBooking.endDate,
+        reservation,
+      )) {
+        return true;
+      }
+    }
+
+    // Also check existing booking documents for compatibility with older data.
+    final existingBookings =
+        await getBookingsForFurniture(furnitureId);
 
     return existingBookings.any((existing) {
-      if (existing.id == proposedBooking.id) {
-        return false;
-      }
+      if (existing.id == proposedBooking.id) return false;
+      if (!_blocksAvailability(existing.status)) return false;
 
-      // Cancelled and returned bookings no longer block availability.
-      if (existing.status == BookingStatus.cancelled ||
-          existing.status == BookingStatus.returned) {
-        return false;
-      }
-
-      // Two date ranges overlap when each starts before the other ends.
       return proposedBooking.startDate.isBefore(existing.endDate) &&
           existing.startDate.isBefore(proposedBooking.endDate);
     });
   }
 
-  /// Creates a booking if no existing booking overlaps its date range.
+  // ---------------------------------------------------------------------------
+  // Create booking
+  // ---------------------------------------------------------------------------
+
+  /// Creates a booking using a per-furniture transaction lock.
+  ///
+  /// All new bookings for the same furniture item must use this method for
+  /// concurrent conflict prevention.
   Future<String> createBooking(Booking booking) async {
     booking.validate();
 
-    final hasConflict = await hasBookingConflict(booking);
+    final furnitureId = booking.furnitureId.trim();
+    final customerId = booking.customerId.trim();
 
-    if (hasConflict) {
-      throw StateError(
-        'This furniture item is already booked for the selected dates.',
+    if (furnitureId.isEmpty || customerId.isEmpty) {
+      throw ArgumentError(
+        'Furniture ID and customer ID are required.',
       );
     }
 
-    final document = _bookingsCollection.doc();
+    // Generate the ID before the transaction so retries use the same ID.
+    final bookingRef = _bookingsCollection.doc();
+    final lockRef = _locksCollection.doc(furnitureId);
 
-    await document.set({
-      ...booking.toMap(),
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+    await _firestore.runTransaction<void>((transaction) async {
+      final lockSnapshot = await transaction.get(lockRef);
+
+      final reservations = <String, dynamic>{
+        ...?lockSnapshot.data()?['reservations']
+            as Map<String, dynamic>?,
+      };
+
+      for (final entry in reservations.entries) {
+        final reservation =
+            Map<String, dynamic>.from(entry.value as Map);
+
+        if (_reservationConflicts(
+          booking.startDate,
+          booking.endDate,
+          reservation,
+        )) {
+          throw StateError(
+            'This furniture item is already booked for the selected dates.',
+          );
+        }
+      }
+
+      reservations[bookingRef.id] = _reservationData(booking);
+
+      transaction.set(bookingRef, {
+        ...booking.toMap(),
+        'customerId': customerId,
+        'furnitureId': furnitureId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      transaction.set(lockRef, {
+        'furnitureId': furnitureId,
+        'reservations': reservations,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
 
-    return document.id;
+    return bookingRef.id;
   }
 
-  /// Updates the status of an existing booking.
+  // ---------------------------------------------------------------------------
+  // Update booking
+  // ---------------------------------------------------------------------------
+
   Future<void> updateBookingStatus(
     String bookingId,
     BookingStatus status,
   ) async {
-    if (bookingId.trim().isEmpty) {
+    final id = bookingId.trim();
+
+    if (id.isEmpty) {
       throw ArgumentError('Booking ID cannot be empty.');
     }
 
-    await _bookingsCollection.doc(bookingId).update({
-      'status': status.name,
-      'updatedAt': FieldValue.serverTimestamp(),
+    final bookingRef = _bookingsCollection.doc(id);
+
+    await _firestore.runTransaction<void>((transaction) async {
+      final bookingSnapshot = await transaction.get(bookingRef);
+
+      if (!bookingSnapshot.exists || bookingSnapshot.data() == null) {
+        throw StateError('Booking not found: $id');
+      }
+
+      final data = bookingSnapshot.data()!;
+      final furnitureId = data['furnitureId'] as String?;
+
+      if (furnitureId == null || furnitureId.trim().isEmpty) {
+        throw StateError('Booking has no valid furniture ID.');
+      }
+
+      final lockRef = _locksCollection.doc(furnitureId);
+      final lockSnapshot = await transaction.get(lockRef);
+
+      final reservations = <String, dynamic>{
+        ...?lockSnapshot.data()?['reservations']
+            as Map<String, dynamic>?,
+      };
+
+      final reservation = <String, dynamic>{
+        'startDate': data['startDate'],
+        'endDate': data['endDate'],
+        'status': status.name,
+      };
+
+      reservations[id] = reservation;
+
+      transaction.update(bookingRef, {
+        'status': status.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      transaction.set(lockRef, {
+        'furnitureId': furnitureId,
+        'reservations': reservations,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 
-  /// Deletes a booking document.
+  /// Updates a booking's dates and customer/furniture details.
+  ///
+  /// This operation validates dates and checks the lock before updating.
+  /// Use updateBookingStatus when only the status changes.
+  Future<void> updateBooking(Booking booking) async {
+    booking.validate();
+
+    final id = booking.id.trim();
+    final furnitureId = booking.furnitureId.trim();
+    final customerId = booking.customerId.trim();
+
+    if (id.isEmpty || furnitureId.isEmpty || customerId.isEmpty) {
+      throw ArgumentError(
+        'Booking ID, furniture ID and customer ID are required.',
+      );
+    }
+
+    final bookingRef = _bookingsCollection.doc(id);
+    final lockRef = _locksCollection.doc(furnitureId);
+
+    await _firestore.runTransaction<void>((transaction) async {
+      final bookingSnapshot = await transaction.get(bookingRef);
+
+      if (!bookingSnapshot.exists) {
+        throw StateError('Booking not found: $id');
+      }
+
+      final lockSnapshot = await transaction.get(lockRef);
+
+      final reservations = <String, dynamic>{
+        ...?lockSnapshot.data()?['reservations']
+            as Map<String, dynamic>?,
+      };
+
+      if (_blocksAvailability(booking.status)) {
+        for (final entry in reservations.entries) {
+          if (entry.key == id) continue;
+
+          final reservation =
+              Map<String, dynamic>.from(entry.value as Map);
+
+          if (_reservationConflicts(
+            booking.startDate,
+            booking.endDate,
+            reservation,
+          )) {
+            throw StateError(
+              'This furniture item is already booked for the selected dates.',
+            );
+          }
+        }
+
+        reservations[id] = _reservationData(booking);
+      } else {
+        reservations.remove(id);
+      }
+
+      transaction.set(bookingRef, {
+        ...booking.toMap(),
+        'customerId': customerId,
+        'furnitureId': furnitureId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      transaction.set(lockRef, {
+        'furnitureId': furnitureId,
+        'reservations': reservations,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Delete booking
+  // ---------------------------------------------------------------------------
+
   Future<void> deleteBooking(String bookingId) async {
-    if (bookingId.trim().isEmpty) {
+    final id = bookingId.trim();
+
+    if (id.isEmpty) {
       throw ArgumentError('Booking ID cannot be empty.');
     }
 
-    await _bookingsCollection.doc(bookingId).delete();
+    final bookingRef = _bookingsCollection.doc(id);
+
+    await _firestore.runTransaction<void>((transaction) async {
+      final bookingSnapshot = await transaction.get(bookingRef);
+
+      if (!bookingSnapshot.exists || bookingSnapshot.data() == null) {
+        throw StateError('Booking not found: $id');
+      }
+
+      final data = bookingSnapshot.data()!;
+      final furnitureId = data['furnitureId'] as String?;
+
+      if (furnitureId != null && furnitureId.trim().isNotEmpty) {
+        final lockRef = _locksCollection.doc(furnitureId);
+        final lockSnapshot = await transaction.get(lockRef);
+
+        final reservations = <String, dynamic>{
+          ...?lockSnapshot.data()?['reservations']
+              as Map<String, dynamic>?,
+        };
+
+        reservations.remove(id);
+
+        transaction.set(lockRef, {
+          'furnitureId': furnitureId,
+          'reservations': reservations,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      transaction.delete(bookingRef);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Availability helper
+  // ---------------------------------------------------------------------------
+
+  Future<bool> isFurnitureAvailable({
+    required String furnitureId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    if (furnitureId.trim().isEmpty) {
+      throw ArgumentError('Furniture ID cannot be empty.');
+    }
+
+    if (!endDate.isAfter(startDate)) {
+      throw ArgumentError('End date must be after start date.');
+    }
+
+    final proposedBooking = Booking(
+      id: '',
+      customerId: 'availability-check',
+      furnitureId: furnitureId.trim(),
+      startDate: startDate,
+      endDate: endDate,
+      status: BookingStatus.reserved,
+    );
+
+    return !(await hasBookingConflict(proposedBooking));
   }
 }
