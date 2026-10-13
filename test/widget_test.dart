@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:seat_and_set/main.dart';
 import 'package:seat_and_set/admin_panel/screens/admin_orders_screen.dart';
 
+import 'package:seat_and_set/admin_panel/screens/admin_login_screen.dart';
+
 void main() {
   testWidgets('Admin Login screen smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const SeatAndSetAdminApp());
+    await tester.pumpWidget(const SeatAndSetAdminApp(home: AdminLoginScreen()));
     expect(find.text('Seat and Set'), findsOneWidget);
     expect(find.text('Admin'), findsOneWidget);
     expect(find.text('Operations at your fingertips'), findsOneWidget);
