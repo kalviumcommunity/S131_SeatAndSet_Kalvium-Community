@@ -4,6 +4,7 @@ import '../models/dashboard_mock_data.dart';
 import '../services/admin_auth_service.dart';
 import 'admin_login_screen.dart';
 import 'admin_inventory_screen.dart';
+import 'admin_orders_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -598,6 +599,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     context,
                     PageRouteBuilder(
                       pageBuilder: (_, _, _) => const AdminInventoryScreen(),
+                      transitionDuration: Duration.zero,
+                    ),
+                  );
+                } else if (i == 2) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) => const AdminOrdersScreen(),
                       transitionDuration: Duration.zero,
                     ),
                   );
