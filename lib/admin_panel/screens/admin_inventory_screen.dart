@@ -7,6 +7,7 @@ import '../services/inventory_service.dart';
 import '../widgets/furniture_thumbnail.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_orders_screen.dart';
+import 'admin_customers_screen.dart';
 
 
 class AdminInventoryScreen extends StatefulWidget {
@@ -829,6 +830,15 @@ void initState() {
                     PageRouteBuilder(
                       pageBuilder: (_, _, _) =>
                           const AdminOrdersScreen(),
+                      transitionDuration: Duration.zero,
+                    ),
+                  );
+                } else if (i == 3) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) =>
+                          const AdminCustomersScreen(),
                       transitionDuration: Duration.zero,
                     ),
                   );

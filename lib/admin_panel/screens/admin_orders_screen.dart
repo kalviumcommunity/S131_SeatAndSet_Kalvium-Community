@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/order_delivery_item.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
+import 'admin_customers_screen.dart';
 
 class AdminOrdersScreen extends StatefulWidget {
   const AdminOrdersScreen({super.key});
@@ -752,6 +753,14 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     context,
                     PageRouteBuilder(
                       pageBuilder: (_, _, _) => const AdminInventoryScreen(),
+                      transitionDuration: Duration.zero,
+                    ),
+                  );
+                } else if (i == 3) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) => const AdminCustomersScreen(),
                       transitionDuration: Duration.zero,
                     ),
                   );
