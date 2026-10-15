@@ -8,6 +8,7 @@ import '../widgets/furniture_thumbnail.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_customers_screen.dart';
+import 'admin_reports_screen.dart';
 
 
 class AdminInventoryScreen extends StatefulWidget {
@@ -842,12 +843,13 @@ void initState() {
                       transitionDuration: Duration.zero,
                     ),
                   );
-                } else if (i != 1) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${navItems[i].label} section coming soon!',
-                      ),
+                } else if (i == 4) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) =>
+                          const AdminReportsScreen(),
+                      transitionDuration: Duration.zero,
                     ),
                   );
                 }
