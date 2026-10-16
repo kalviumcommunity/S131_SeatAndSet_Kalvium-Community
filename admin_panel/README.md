@@ -57,7 +57,20 @@ The Flutter mobile/cross-platform Admin screens and components are located in:
    - Order Model & Data: [lib/admin_panel/models/order_delivery_item.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/order_delivery_item.dart)
    - Bottom navigation integration with "Orders" tab active, seamlessly wired to Dashboard and Inventory
 
-6. **Backend Services & Theme**
+6. **Admin 06 – Customers Screen** ([lib/admin_panel/screens/admin_customers_screen.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/screens/admin_customers_screen.dart))
+   - Header: "Customers" matching Figma mockup
+   - Real-time search bar ("Search customers...") with instant name, phone number, and initials filtering
+   - Customer cards matching Figma Admin 06 design:
+     - Soft lavender circular avatar with purple uppercase initials (`RS`, `PM`, `AS`, `NK`, `VR`, etc.)
+     - Customer name in bold typography
+     - Phone number (`+91 98765 43210`, etc.)
+     - Active rental status label (`12 active rentals`, `3 active rentals`, `1 active rental`, `2 active rentals`, `No active rentals`)
+     - 3-dots popup menu (`...`) per customer (View Profile, Call Customer, Message, View Rentals)
+   - Interactive Customer Profile modal bottom sheet with contact actions ("Call", "Message"), email, delivery address, membership details, and active rental breakdown
+   - Customer Model & Mock Data: [lib/admin_panel/models/customer_item.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/customer_item.dart)
+   - Bottom navigation bar with "Customers" tab active, fully interconnected with Dashboard, Inventory, and Orders
+
+7. **Backend Services & Theme**
    - **Authentication & Firestore**: [lib/admin_panel/services/admin_auth_service.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/services/admin_auth_service.dart) (Firebase Auth + writes admin records to Firestore `admins/{uid}`)
    - **Theme & Colors**: [lib/admin_panel/theme/admin_colors.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/theme/admin_colors.dart) (Dark indigo gradients, glowing purple buttons)
    - **Reusable Widgets**: [lib/admin_panel/widgets/admin_text_field.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_text_field.dart), [lib/admin_panel/widgets/admin_button.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_button.dart), [lib/admin_panel/widgets/admin_logo.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_logo.dart)
