@@ -75,16 +75,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               Expanded(child: Text(error)),
             ],
           ),
-          action: SnackBarAction(
-            label: 'Open Mock',
-            textColor: Colors.amberAccent,
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-              );
-            },
-          ),
         ),
       );
     }

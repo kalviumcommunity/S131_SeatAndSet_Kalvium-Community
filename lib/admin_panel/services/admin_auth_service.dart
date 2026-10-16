@@ -1,12 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminAuthService {
-  FirebaseAuth get _auth => FirebaseAuth.instance;
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  AdminAuthService({
+    FirebaseAuth? auth,
+  }) : _auth = auth ?? FirebaseAuth.instance;
 
-  // Default allowed Admin Access Code (matches the design mockup SNS-ADM-2025)
-  static const String validAccessCode = 'SNS-ADM-2025';
+  final FirebaseAuth _auth;
+
+  static bool hasAdminClaim(Map<String, dynamic>? claims) {
+    return claims?['admin'] == true;
+  }
 
   User? get currentAdmin {
     try {
@@ -35,20 +38,12 @@ class AdminAuthService {
         password: password,
       );
 
-      // Verify that this user has an admin record in Firestore
-      final adminDoc = await _firestore
-          .collection('admins')
-          .doc(credential.user?.uid)
-          .get();
+      final user = credential.user;
+      final token = await user?.getIdTokenResult(true);
 
-      if (!adminDoc.exists) {
-        // Automatically create or mark record if this is the first login
-        await _firestore.collection('admins').doc(credential.user?.uid).set({
-          'uid': credential.user?.uid,
-          'email': credential.user?.email,
-          'role': 'admin',
-          'lastLogin': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+      if (user == null || !hasAdminClaim(token?.claims)) {
+        await _auth.signOut();
+        return 'This account is not authorized for the admin dashboard.';
       }
 
       return null; // Success (no error)
@@ -66,39 +61,9 @@ class AdminAuthService {
     required String accessCode,
     required String password,
   }) async {
-    try {
-      // Validate Admin Access Code
-      if (accessCode.trim() != validAccessCode) {
-        return 'Invalid Admin Access Code. Please obtain the correct code from your organisation owner.';
-      }
-
-      // Create user in Firebase Auth
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: workEmail.trim(),
-        password: password,
-      );
-
-      final user = credential.user;
-      if (user != null) {
-        await user.updateDisplayName(fullName.trim());
-
-        // Save admin record in Cloud Firestore
-        await _firestore.collection('admins').doc(user.uid).set({
-          'uid': user.uid,
-          'fullName': fullName.trim(),
-          'workEmail': workEmail.trim(),
-          'accessCode': accessCode.trim(),
-          'role': 'admin',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      return null; // Success
-    } on FirebaseAuthException catch (e) {
-      return _mapAuthError(e);
-    } catch (e) {
-      return e.toString();
-    }
+    return 'Admin accounts must be provisioned by an organization owner. '
+        'Create the user in Firebase Authentication, then grant the admin '
+        'custom claim from a trusted backend before signing in.';
   }
 
   /// Send password reset email
