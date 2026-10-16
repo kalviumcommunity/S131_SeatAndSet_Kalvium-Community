@@ -74,11 +74,24 @@ class InventoryService {
       throw ArgumentError('Furniture name and SKU are required.');
     }
 
-    await _furnitureCollection.doc(item.id).update({
-      ...item.toMap(),
-      'name': item.name.trim(),
-      'sku': item.sku.trim(),
-      'updatedAt': FieldValue.serverTimestamp(),
+    final document = _furnitureCollection.doc(item.id);
+    final skuDocument = _furnitureCollection.doc(item.sku.trim());
+
+    await _firestore.runTransaction<void>((transaction) async {
+      if (document.path != skuDocument.path) {
+        final existingSku = await transaction.get(skuDocument);
+
+        if (existingSku.exists) {
+          throw StateError('Furniture SKU already exists: ${item.sku.trim()}');
+        }
+      }
+
+      transaction.update(document, {
+        ...item.toMap(),
+        'name': item.name.trim(),
+        'sku': item.sku.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 

@@ -256,6 +256,21 @@ class BookingService {
       throw ArgumentError('Furniture ID and customer ID are required.');
     }
 
+    // Check records created before reservation locks were introduced.
+    final existingBookings = await getBookingsForFurniture(furnitureId);
+    final hasLegacyConflict = existingBookings.any((existing) {
+      if (!_blocksAvailability(existing.status)) return false;
+
+      return booking.startDate.isBefore(existing.endDate) &&
+          existing.startDate.isBefore(booking.endDate);
+    });
+
+    if (hasLegacyConflict) {
+      throw StateError(
+        'This furniture item is already booked for the selected dates.',
+      );
+    }
+
     // Generate the ID before the transaction so retries use the same ID.
     final bookingRef = _bookingsCollection.doc();
     final lockRef = _locksCollection.doc(furnitureId);
@@ -338,13 +353,30 @@ class BookingService {
         ...?lockSnapshot.data()?['reservations'] as Map<String, dynamic>?,
       };
 
-      final reservation = <String, dynamic>{
-        'startDate': data['startDate'],
-        'endDate': data['endDate'],
-        'status': status.name,
-      };
+      if (_blocksAvailability(status)) {
+        final startDate = _readDate(data['startDate']);
+        final endDate = _readDate(data['endDate']);
 
-      reservations[id] = reservation;
+        for (final entry in reservations.entries) {
+          if (entry.key == id) continue;
+
+          final reservation = Map<String, dynamic>.from(entry.value as Map);
+
+          if (_reservationConflicts(startDate, endDate, reservation)) {
+            throw StateError(
+              'This furniture item is already booked for the selected dates.',
+            );
+          }
+        }
+
+        reservations[id] = {
+          'startDate': data['startDate'],
+          'endDate': data['endDate'],
+          'status': status.name,
+        };
+      } else {
+        reservations.remove(id);
+      }
 
       transaction.update(bookingRef, {
         'status': status.name,
