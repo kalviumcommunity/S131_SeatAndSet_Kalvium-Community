@@ -27,6 +27,14 @@ class CustomerItem {
     return '$activeRentals active rentals';
   }
 
+  bool matchesQuery(String cleanQuery) {
+    if (cleanQuery.isEmpty) return true;
+    return name.toLowerCase().contains(cleanQuery) ||
+        phoneNumber.replaceAll(' ', '').contains(cleanQuery) ||
+        initials.toLowerCase().contains(cleanQuery) ||
+        email.toLowerCase().contains(cleanQuery);
+  }
+
   /// Mock customers exactly matching Figma Admin 06 – Customers
   static List<CustomerItem> getMockCustomers() {
     return const [

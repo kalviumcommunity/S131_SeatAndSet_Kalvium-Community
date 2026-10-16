@@ -8,7 +8,14 @@ import 'admin_orders_screen.dart';
 import 'admin_reports_screen.dart';
 
 class AdminCustomersScreen extends StatefulWidget {
-  const AdminCustomersScreen({super.key});
+  final bool showBottomNav;
+  final ValueChanged<int>? onNavigateTab;
+
+  const AdminCustomersScreen({
+    super.key,
+    this.showBottomNav = true,
+    this.onNavigateTab,
+  });
 
   @override
   State<AdminCustomersScreen> createState() => _AdminCustomersScreenState();
@@ -40,11 +47,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
     final query = _searchController.text.toLowerCase().trim();
     if (query.isEmpty) return _allCustomers;
 
-    return _allCustomers.where((customer) {
-      return customer.name.toLowerCase().contains(query) ||
-          customer.phoneNumber.replaceAll(' ', '').contains(query.replaceAll(' ', '')) ||
-          customer.initials.toLowerCase().contains(query);
-    }).toList();
+    return _allCustomers.where((customer) => customer.matchesQuery(query)).toList();
   }
 
   void _showCustomerDetailsSheet(CustomerItem customer) {
@@ -525,6 +528,8 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
+    if (!widget.showBottomNav) return const SizedBox.shrink();
+
     final navItems = [
       _NavItem(icon: Icons.grid_view_rounded, label: 'Dashboard'),
       _NavItem(icon: Icons.inventory_2_outlined, label: 'Inventory'),
@@ -556,6 +561,10 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
               item: navItems[i],
               isSelected: i == 3, // Customers is selected
               onTap: () {
+                if (widget.onNavigateTab != null) {
+                  widget.onNavigateTab!(i);
+                  return;
+                }
                 if (i == 0) {
                   Navigator.pushReplacement(
                     context,

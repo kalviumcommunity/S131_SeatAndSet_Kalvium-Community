@@ -7,21 +7,29 @@ class AdminLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size * 0.95),
-      painter: _AdminLogoPainter(),
+    return RepaintBoundary(
+      child: CustomPaint(
+        size: Size(size, size * 0.95),
+        painter: const _AdminLogoPainter(),
+      ),
     );
   }
 }
 
 class _AdminLogoPainter extends CustomPainter {
+  const _AdminLogoPainter();
+
+  static final Paint _paint = Paint()
+    ..color = Colors.white
+    ..style = PaintingStyle.fill
+    ..isAntiAlias = true;
+
+  static final Paint _shadowPaint = Paint()
+    ..color = Colors.white.withValues(alpha: 0.15)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
     final path = Path();
     final w = size.width;
     final h = size.height;
@@ -39,15 +47,10 @@ class _AdminLogoPainter extends CustomPainter {
     path.quadraticBezierTo(w * 0.45, 0, w * 0.5, 0); // Back to apex
     path.close();
 
-    // Soft drop shadow / glow
-    final shadowPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-    canvas.drawPath(path, shadowPaint);
-
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, _shadowPaint);
+    canvas.drawPath(path, _paint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _AdminLogoPainter oldDelegate) => false;
 }

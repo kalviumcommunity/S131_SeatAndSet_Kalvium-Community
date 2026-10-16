@@ -15,9 +15,13 @@ class AdminInventoryScreen extends StatefulWidget {
   const AdminInventoryScreen({
     super.key,
     this.inventoryService,
+    this.showBottomNav = true,
+    this.onNavigateTab,
   });
 
   final InventoryService? inventoryService;
+  final bool showBottomNav;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<AdminInventoryScreen> createState() =>
@@ -59,10 +63,7 @@ void initState() {
     final query = _searchController.text.toLowerCase().trim();
 
     return items.where((item) {
-      final matchesQuery = query.isEmpty ||
-          item.name.toLowerCase().contains(query) ||
-          item.sku.toLowerCase().contains(query);
-
+      final matchesQuery = item.matchesQuery(query);
       final matchesStatus = _selectedStatusFilter == null ||
           item.status == _selectedStatusFilter;
 
@@ -439,75 +440,83 @@ void initState() {
           child: Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 18),
-                    _buildSearchAndFilterRow(),
-                    const SizedBox(height: 18),
-                    StreamBuilder<List<InventoryItem>>(
-                      stream: _inventoryService.watchFurniture(),
-                      builder: (context, snapshot) {
+                child: StreamBuilder<List<InventoryItem>>(
+                  stream: _inventoryService.watchFurniture(),
+                  builder: (context, snapshot) {
+                    final allItems = snapshot.data ?? <InventoryItem>[];
+                    final filteredItems = _filterItems(allItems);
+
+                    return CustomScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                          sliver: SliverToBoxAdapter(
+                            child: Column(
+                              children: [
+                                _buildHeader(),
+                                const SizedBox(height: 18),
+                                _buildSearchAndFilterRow(),
+                                const SizedBox(height: 18),
+                              ],
+                            ),
+                          ),
+                        ),
                         if (snapshot.connectionState ==
                                 ConnectionState.waiting &&
-                            !snapshot.hasData) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 60,
-                            ),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: Color(0xFF4F46E5),
+                            !snapshot.hasData)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 60,
+                              ),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF4F46E5),
+                                ),
                               ),
                             ),
-                          );
-                        }
-
-                        if (snapshot.hasError) {
-                          return _buildMessage(
-                            'Unable to load inventory. Check your '
-                            'connection and Firestore permissions.',
-                            icon: Icons.cloud_off_outlined,
-                            action: TextButton(
-                              onPressed: () => setState(() {}),
-                              child: const Text('Retry'),
+                          )
+                        else if (snapshot.hasError)
+                          SliverToBoxAdapter(
+                            child: _buildMessage(
+                              'Unable to load inventory. Check your '
+                              'connection and Firestore permissions.',
+                              icon: Icons.cloud_off_outlined,
+                              action: TextButton(
+                                onPressed: () => setState(() {}),
+                                child: const Text('Retry'),
+                              ),
                             ),
-                          );
-                        }
-
-                        final allItems =
-                            snapshot.data ?? <InventoryItem>[];
-                        final filteredItems =
-                            _filterItems(allItems);
-
-                        if (allItems.isEmpty) {
-                          return _buildMessage(
-                            'No furniture has been added yet. '
-                            'Use the Add Furniture button to get started.',
-                            icon: Icons.inventory_2_outlined,
-                          );
-                        }
-
-                        if (filteredItems.isEmpty) {
-                          return _buildMessage(
-                            'No items match your search or filter.',
-                            icon: Icons.search_off_rounded,
-                          );
-                        }
-
-                        return Column(
-                          children: filteredItems
-                              .map(_buildInventoryCard)
-                              .toList(),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                          )
+                        else if (allItems.isEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildMessage(
+                              'No furniture has been added yet. '
+                              'Use the Add Furniture button to get started.',
+                              icon: Icons.inventory_2_outlined,
+                            ),
+                          )
+                        else if (filteredItems.isEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildMessage(
+                              'No items match your search or filter.',
+                              icon: Icons.search_off_rounded,
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            sliver: SliverList.builder(
+                              itemCount: filteredItems.length,
+                              itemBuilder: (context, index) =>
+                                  _buildInventoryCard(filteredItems[index]),
+                            ),
+                          ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                      ],
+                    );
+                  },
                 ),
               ),
               _buildBottomNavigationBar(),
@@ -792,6 +801,8 @@ void initState() {
   }
 
   Widget _buildBottomNavigationBar() {
+    if (!widget.showBottomNav) return const SizedBox.shrink();
+
     final navItems = [
       _NavItem(icon: Icons.grid_view_rounded, label: 'Dashboard'),
       _NavItem(icon: Icons.inventory_2_outlined, label: 'Inventory'),
@@ -816,6 +827,10 @@ void initState() {
               item: navItems[i],
               isSelected: i == 1,
               onTap: () {
+                if (widget.onNavigateTab != null) {
+                  widget.onNavigateTab!(i);
+                  return;
+                }
                 if (i == 0) {
                   Navigator.pushReplacement(
                     context,

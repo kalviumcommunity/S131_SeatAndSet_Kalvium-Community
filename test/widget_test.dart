@@ -6,6 +6,7 @@ import 'package:seat_and_set/admin_panel/screens/admin_login_screen.dart';
 import 'package:seat_and_set/admin_panel/screens/admin_orders_screen.dart';
 import 'package:seat_and_set/admin_panel/screens/admin_customers_screen.dart';
 import 'package:seat_and_set/admin_panel/screens/admin_reports_screen.dart';
+import 'package:seat_and_set/admin_panel/screens/admin_shell_screen.dart';
 import 'package:seat_and_set/admin_panel/services/inventory_service.dart';
 import 'package:seat_and_set/main.dart';
 
@@ -196,5 +197,55 @@ void main() {
     // Verify updated values for This Week
     expect(find.text('₹34,200'), findsOneWidget);
     expect(find.text('24'), findsWidgets);
+  });
+
+  testWidgets('Admin Navigation Shell smoke test with state preservation', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final fakeFirestore = FakeFirebaseFirestore();
+    final fakeInventoryService = InventoryService(firestore: fakeFirestore);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AdminShellScreen(
+          initialIndex: 0,
+          inventoryService: fakeInventoryService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify Dashboard tab active by default
+    expect(find.text('Dashboard'), findsWidgets);
+    expect(find.text('Total Items'), findsOneWidget);
+
+    // Switch to Orders (tab 2)
+    await tester.tap(find.text('Orders'));
+    await tester.pumpAndSettle();
+    expect(find.text('Deliveries & Pickups'), findsOneWidget);
+
+    // Switch to Customers (tab 3)
+    await tester.tap(find.text('Customers'));
+    await tester.pumpAndSettle();
+    expect(find.text('Search customers...'), findsOneWidget);
+
+    // Filter customers
+    await tester.enterText(find.byType(TextField), 'Priya');
+    await tester.pumpAndSettle();
+    expect(find.text('Priya Mehta'), findsOneWidget);
+
+    // Switch to Reports (tab 4) and switch back to Customers (tab 3)
+    await tester.tap(find.text('Reports'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rentals Trend'), findsOneWidget);
+
+    await tester.tap(find.text('Customers'));
+    await tester.pumpAndSettle();
+
+    // State preservation verified: query 'Priya' is still preserved!
+    expect(find.text('Priya Mehta'), findsOneWidget);
+    expect(find.text('Rahul Sharma'), findsNothing);
   });
 }
