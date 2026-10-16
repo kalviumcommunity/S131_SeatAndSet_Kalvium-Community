@@ -1,11 +1,10 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/booking.dart';
 
 class BookingService {
   BookingService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -73,15 +72,46 @@ class BookingService {
 
   Stream<List<Booking>> watchAllBookings() {
     return _bookingsCollection.snapshots().map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Booking.fromMap(doc.id, doc.data()))
-              .toList(),
-        );
+      (snapshot) => snapshot.docs
+          .map((doc) => Booking.fromMap(doc.id, doc.data()))
+          .toList(),
+    );
   }
 
-  Future<List<Booking>> getBookingsForFurniture(
-    String furnitureId,
-  ) async {
+  bool _isOverdue(Booking booking, DateTime now) {
+    if (booking.status == BookingStatus.cancelled ||
+        booking.status == BookingStatus.pickedUp ||
+        booking.status == BookingStatus.returned) {
+      return false;
+    }
+
+    return booking.endDate.isBefore(now);
+  }
+
+  /// Returns rentals whose expected end date has passed and are not complete.
+  ///
+  /// The filter is intentionally performed client-side because the existing
+  /// schema has no normalized completion date field.
+  Future<List<Booking>> getOverdueBookings({DateTime? now}) async {
+    final bookings = await getAllBookings();
+    final referenceTime = now ?? DateTime.now();
+
+    return bookings
+        .where((booking) => _isOverdue(booking, referenceTime))
+        .toList();
+  }
+
+  Stream<List<Booking>> watchOverdueBookings({DateTime? now}) {
+    return _bookingsCollection.snapshots().map((snapshot) {
+      final referenceTime = now ?? DateTime.now();
+      return snapshot.docs
+          .map((doc) => Booking.fromMap(doc.id, doc.data()))
+          .where((booking) => _isOverdue(booking, referenceTime))
+          .toList();
+    });
+  }
+
+  Future<List<Booking>> getBookingsForFurniture(String furnitureId) async {
     final id = furnitureId.trim();
 
     if (id.isEmpty) {
@@ -97,9 +127,7 @@ class BookingService {
         .toList();
   }
 
-  Stream<List<Booking>> watchBookingsForFurniture(
-    String furnitureId,
-  ) {
+  Stream<List<Booking>> watchBookingsForFurniture(String furnitureId) {
     final id = furnitureId.trim();
 
     if (id.isEmpty) {
@@ -116,9 +144,7 @@ class BookingService {
         );
   }
 
-  Future<List<Booking>> getBookingsForCustomer(
-    String customerId,
-  ) async {
+  Future<List<Booking>> getBookingsForCustomer(String customerId) async {
     final id = customerId.trim();
 
     if (id.isEmpty) {
@@ -134,9 +160,7 @@ class BookingService {
         .toList();
   }
 
-  Stream<List<Booking>> watchBookingsForCustomer(
-    String customerId,
-  ) {
+  Stream<List<Booking>> watchBookingsForCustomer(String customerId) {
     final id = customerId.trim();
 
     if (id.isEmpty) {
@@ -191,8 +215,7 @@ class BookingService {
     for (final entry in reservations.entries) {
       if (entry.key == proposedBooking.id) continue;
 
-      final reservation =
-          Map<String, dynamic>.from(entry.value as Map);
+      final reservation = Map<String, dynamic>.from(entry.value as Map);
 
       if (_reservationConflicts(
         proposedBooking.startDate,
@@ -204,8 +227,7 @@ class BookingService {
     }
 
     // Also check existing booking documents for compatibility with older data.
-    final existingBookings =
-        await getBookingsForFurniture(furnitureId);
+    final existingBookings = await getBookingsForFurniture(furnitureId);
 
     return existingBookings.any((existing) {
       if (existing.id == proposedBooking.id) return false;
@@ -231,9 +253,7 @@ class BookingService {
     final customerId = booking.customerId.trim();
 
     if (furnitureId.isEmpty || customerId.isEmpty) {
-      throw ArgumentError(
-        'Furniture ID and customer ID are required.',
-      );
+      throw ArgumentError('Furniture ID and customer ID are required.');
     }
 
     // Generate the ID before the transaction so retries use the same ID.
@@ -244,13 +264,11 @@ class BookingService {
       final lockSnapshot = await transaction.get(lockRef);
 
       final reservations = <String, dynamic>{
-        ...?lockSnapshot.data()?['reservations']
-            as Map<String, dynamic>?,
+        ...?lockSnapshot.data()?['reservations'] as Map<String, dynamic>?,
       };
 
       for (final entry in reservations.entries) {
-        final reservation =
-            Map<String, dynamic>.from(entry.value as Map);
+        final reservation = Map<String, dynamic>.from(entry.value as Map);
 
         if (_reservationConflicts(
           booking.startDate,
@@ -317,8 +335,7 @@ class BookingService {
       final lockSnapshot = await transaction.get(lockRef);
 
       final reservations = <String, dynamic>{
-        ...?lockSnapshot.data()?['reservations']
-            as Map<String, dynamic>?,
+        ...?lockSnapshot.data()?['reservations'] as Map<String, dynamic>?,
       };
 
       final reservation = <String, dynamic>{
@@ -360,28 +377,35 @@ class BookingService {
     }
 
     final bookingRef = _bookingsCollection.doc(id);
-    final lockRef = _locksCollection.doc(furnitureId);
-
     await _firestore.runTransaction<void>((transaction) async {
       final bookingSnapshot = await transaction.get(bookingRef);
 
-      if (!bookingSnapshot.exists) {
+      if (!bookingSnapshot.exists || bookingSnapshot.data() == null) {
         throw StateError('Booking not found: $id');
       }
 
-      final lockSnapshot = await transaction.get(lockRef);
+      final existingData = bookingSnapshot.data()!;
+      final existingFurnitureId = existingData['furnitureId'] as String?;
+      if (existingFurnitureId == null || existingFurnitureId.trim().isEmpty) {
+        throw StateError('Booking has no valid furniture ID.');
+      }
+
+      final oldLockRef = _locksCollection.doc(existingFurnitureId.trim());
+      final newLockRef = _locksCollection.doc(furnitureId);
+      final oldLockSnapshot = await transaction.get(oldLockRef);
+      final newLockSnapshot = oldLockRef.path == newLockRef.path
+          ? oldLockSnapshot
+          : await transaction.get(newLockRef);
 
       final reservations = <String, dynamic>{
-        ...?lockSnapshot.data()?['reservations']
-            as Map<String, dynamic>?,
+        ...?newLockSnapshot.data()?['reservations'] as Map<String, dynamic>?,
       };
 
       if (_blocksAvailability(booking.status)) {
         for (final entry in reservations.entries) {
           if (entry.key == id) continue;
 
-          final reservation =
-              Map<String, dynamic>.from(entry.value as Map);
+          final reservation = Map<String, dynamic>.from(entry.value as Map);
 
           if (_reservationConflicts(
             booking.startDate,
@@ -406,11 +430,23 @@ class BookingService {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      transaction.set(lockRef, {
+      transaction.set(newLockRef, {
         'furnitureId': furnitureId,
         'reservations': reservations,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      if (oldLockRef.path != newLockRef.path) {
+        final oldReservations = <String, dynamic>{
+          ...?oldLockSnapshot.data()?['reservations'] as Map<String, dynamic>?,
+        };
+        oldReservations.remove(id);
+        transaction.set(oldLockRef, {
+          'furnitureId': existingFurnitureId.trim(),
+          'reservations': oldReservations,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
     });
   }
 
@@ -442,8 +478,7 @@ class BookingService {
         final lockSnapshot = await transaction.get(lockRef);
 
         final reservations = <String, dynamic>{
-          ...?lockSnapshot.data()?['reservations']
-              as Map<String, dynamic>?,
+          ...?lockSnapshot.data()?['reservations'] as Map<String, dynamic>?,
         };
 
         reservations.remove(id);
