@@ -44,7 +44,20 @@ The Flutter mobile/cross-platform Admin screens and components are located in:
    - Action popup menu (`...`) per item (View Details, Edit Item, Change Status)
    - Seamless navigation connecting between Dashboard and Inventory tabs
 
-5. **Backend Services & Theme**
+5. **Admin 05 – Deliveries & Pickups (Orders) Screen** ([lib/admin_panel/screens/admin_orders_screen.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/screens/admin_orders_screen.dart))
+   - Header: "Deliveries & Pickups"
+   - Interactive segmented pill tabs: "Today", "Upcoming", "Completed" with smooth animated transitions
+   - Order & Delivery Cards matching Figma Admin 05 design:
+     - Delivery cards with lavender background badges and shipping truck icons
+     - Pickup cards with peach background badges and storefront/warehouse icons
+     - Recipient & source information ("To: Rahul Sharma", "From: Priya Mehta", etc.)
+     - Scheduled time display with clock icon
+     - Outlined "Navigate" action buttons opening live modal sheet with directions, GPS routing, and customer calling
+     - 3-dots popup menu per order item (View Details, Directions, Call Customer, Status updates)
+   - Order Model & Data: [lib/admin_panel/models/order_delivery_item.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/order_delivery_item.dart)
+   - Bottom navigation integration with "Orders" tab active, seamlessly wired to Dashboard and Inventory
+
+6. **Backend Services & Theme**
    - **Authentication & Firestore**: [lib/admin_panel/services/admin_auth_service.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/services/admin_auth_service.dart) (Firebase Auth + writes admin records to Firestore `admins/{uid}`)
    - **Theme & Colors**: [lib/admin_panel/theme/admin_colors.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/theme/admin_colors.dart) (Dark indigo gradients, glowing purple buttons)
    - **Reusable Widgets**: [lib/admin_panel/widgets/admin_text_field.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_text_field.dart), [lib/admin_panel/widgets/admin_button.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_button.dart), [lib/admin_panel/widgets/admin_logo.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_logo.dart)
