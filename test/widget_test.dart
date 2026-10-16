@@ -5,6 +5,7 @@ import 'package:seat_and_set/admin_panel/screens/admin_inventory_screen.dart';
 import 'package:seat_and_set/admin_panel/screens/admin_login_screen.dart';
 import 'package:seat_and_set/admin_panel/screens/admin_orders_screen.dart';
 import 'package:seat_and_set/admin_panel/screens/admin_customers_screen.dart';
+import 'package:seat_and_set/admin_panel/screens/admin_reports_screen.dart';
 import 'package:seat_and_set/admin_panel/services/inventory_service.dart';
 import 'package:seat_and_set/main.dart';
 
@@ -131,5 +132,69 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Call'), findsOneWidget);
     expect(find.text('Message'), findsOneWidget);
+  });
+
+  testWidgets('Admin Reports screen smoke test', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AdminReportsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Check title and timeframe selector
+    expect(find.text('Reports'), findsWidgets);
+    expect(find.text('This Month'), findsOneWidget);
+
+    // Check Metric 1: Total Revenue
+    expect(find.text('₹1,24,800'), findsOneWidget);
+    expect(find.text('+12%'), findsOneWidget);
+    expect(find.text('Total Revenue'), findsOneWidget);
+
+    // Check Metric 2: Total Rentals
+    expect(find.text('86'), findsOneWidget);
+    expect(find.text('+8%'), findsOneWidget);
+    expect(find.text('Total Rentals'), findsOneWidget);
+
+    // Check Rentals Trend section & labels
+    expect(find.text('Rentals Trend'), findsOneWidget);
+    expect(find.text('60'), findsOneWidget);
+    expect(find.text('40'), findsOneWidget);
+    expect(find.text('20'), findsNWidgets(2)); // Y-axis 20 and X-axis 20
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('01'), findsOneWidget);
+    expect(find.text('05'), findsOneWidget);
+    expect(find.text('10'), findsOneWidget);
+    expect(find.text('15'), findsOneWidget);
+    expect(find.text('25'), findsOneWidget);
+    expect(find.text('30'), findsOneWidget);
+
+    // Check Top Categories section & counts
+    expect(find.text('Top Categories'), findsOneWidget);
+    expect(find.text('Sofas'), findsOneWidget);
+    expect(find.text('32'), findsOneWidget);
+    expect(find.text('Tables'), findsOneWidget);
+    expect(find.text('24'), findsOneWidget);
+    expect(find.text('Chairs'), findsOneWidget);
+    expect(find.text('18'), findsOneWidget);
+    expect(find.text('Beds'), findsOneWidget);
+    expect(find.text('12'), findsOneWidget);
+
+    // Test Timeframe switching (tap This Month -> choose This Week)
+    await tester.tap(find.text('This Month'));
+    await tester.pumpAndSettle();
+    expect(find.text('Select Timeframe'), findsOneWidget);
+    expect(find.text('This Week'), findsOneWidget);
+
+    await tester.tap(find.text('This Week'));
+    await tester.pumpAndSettle();
+
+    // Verify updated values for This Week
+    expect(find.text('₹34,200'), findsOneWidget);
+    expect(find.text('24'), findsWidgets);
   });
 }

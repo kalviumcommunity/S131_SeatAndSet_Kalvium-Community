@@ -6,6 +6,7 @@ import 'admin_login_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_customers_screen.dart';
+import 'admin_reports_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -619,13 +620,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       transitionDuration: Duration.zero,
                     ),
                   );
-                } else if (i != 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      duration: const Duration(milliseconds: 900),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      content: Text('${navItems[i].label} section coming soon!'),
+                } else if (i == 4) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) => const AdminReportsScreen(),
+                      transitionDuration: Duration.zero,
                     ),
                   );
                 }

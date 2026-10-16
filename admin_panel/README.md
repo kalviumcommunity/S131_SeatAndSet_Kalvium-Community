@@ -70,7 +70,23 @@ The Flutter mobile/cross-platform Admin screens and components are located in:
    - Customer Model & Mock Data: [lib/admin_panel/models/customer_item.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/customer_item.dart)
    - Bottom navigation bar with "Customers" tab active, fully interconnected with Dashboard, Inventory, and Orders
 
-7. **Backend Services & Theme**
+7. **Admin 07 – Reports Screen** ([lib/admin_panel/screens/admin_reports_screen.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/screens/admin_reports_screen.dart))
+   - Header: "Reports" with interactive timeframe selector ("This Month", "This Week", "This Quarter", "This Year")
+   - Metric 1: **Total Revenue** card (`₹1,24,800` with `+12%` green badge)
+   - Metric 2: **Total Rentals** card (`86` with `+8%` green badge)
+   - **Rentals Trend** Bar Chart:
+     - Y-axis markers (`60`, `40`, `20`, `0`) with subtle horizontal grid lines
+     - Rounded vertical bars with alternating primary purple (`#5D5FEF`) and soft lavender (`#B5B7FB`)
+     - X-axis day markers (`01`, `05`, `10`, `15`, `20`, `25`, `30`)
+     - Interactive tap selection showing tooltip with exact day and rental count
+   - **Top Categories** Section:
+     - Category cards with lavender icon badges (`#EEF0FE`) and icons for Sofas, Tables, Chairs, and Beds
+     - Smooth horizontal progress bars in deep purple (`#5D5FEF`) over grey background tracks (`#F3F4FB`)
+     - Volume counts: Sofas (32), Tables (24), Chairs (18), Beds (12)
+   - Reports Model & Mock Data: [lib/admin_panel/models/reports_data.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/reports_data.dart)
+   - Bottom navigation bar with "Reports" (tab index 4) active, interconnected with Dashboard, Inventory, Orders, and Customers
+
+8. **Backend Services & Theme**
    - **Authentication & Firestore**: [lib/admin_panel/services/admin_auth_service.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/services/admin_auth_service.dart) (Firebase Auth + writes admin records to Firestore `admins/{uid}`)
    - **Theme & Colors**: [lib/admin_panel/theme/admin_colors.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/theme/admin_colors.dart) (Dark indigo gradients, glowing purple buttons)
    - **Reusable Widgets**: [lib/admin_panel/widgets/admin_text_field.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_text_field.dart), [lib/admin_panel/widgets/admin_button.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_button.dart), [lib/admin_panel/widgets/admin_logo.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_logo.dart)
