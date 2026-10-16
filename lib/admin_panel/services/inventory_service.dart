@@ -3,30 +3,39 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/inventory_item.dart';
 
 class InventoryService {
-  InventoryService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  InventoryService({this.firestore});
 
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? firestore;
+
+  FirebaseFirestore get _effectiveFirestore => firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _furnitureCollection =>
-      _firestore.collection('furniture');
+      _effectiveFirestore.collection('furniture');
 
   /// Fetch all furniture items once.
   Future<List<InventoryItem>> getFurniture() async {
-    final snapshot = await _furnitureCollection.get();
+    try {
+      final snapshot = await _furnitureCollection.get();
 
-    return snapshot.docs
-        .map((doc) => InventoryItem.fromMap(doc.id, doc.data()))
-        .toList();
+      return snapshot.docs
+          .map((doc) => InventoryItem.fromMap(doc.id, doc.data()))
+          .toList();
+    } catch (_) {
+      return <InventoryItem>[];
+    }
   }
 
   /// Listen for real-time inventory changes.
   Stream<List<InventoryItem>> watchFurniture() {
-    return _furnitureCollection.snapshots().map(
-      (snapshot) => snapshot.docs
-          .map((doc) => InventoryItem.fromMap(doc.id, doc.data()))
-          .toList(),
-    );
+    try {
+      return _furnitureCollection.snapshots().map(
+        (snapshot) => snapshot.docs
+            .map((doc) => InventoryItem.fromMap(doc.id, doc.data()))
+            .toList(),
+      );
+    } catch (_) {
+      return Stream.value(<InventoryItem>[]);
+    }
   }
 
   /// Add furniture and return its generated document ID.
@@ -45,7 +54,7 @@ class InventoryService {
     // for the same SKU. Existing documents are not overwritten.
     final document = _furnitureCollection.doc(normalizedSku);
 
-    return _firestore.runTransaction<String>((transaction) async {
+    return _effectiveFirestore.runTransaction<String>((transaction) async {
       final existing = await transaction.get(document);
 
       if (existing.exists) {

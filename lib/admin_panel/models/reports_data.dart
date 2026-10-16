@@ -239,17 +239,22 @@ class ReportsData {
     );
   }
 
+  static final ReportsData _thisMonth = ReportsData.mockThisMonth();
+  static final ReportsData _thisWeek = ReportsData.mockThisWeek();
+  static final ReportsData _thisQuarter = ReportsData.mockThisQuarter();
+  static final ReportsData _thisYear = ReportsData.mockThisYear();
+
   static ReportsData forTimeframe(String timeframe) {
     switch (timeframe) {
       case 'This Week':
-        return ReportsData.mockThisWeek();
+        return _thisWeek;
       case 'This Quarter':
-        return ReportsData.mockThisQuarter();
+        return _thisQuarter;
       case 'This Year':
-        return ReportsData.mockThisYear();
+        return _thisYear;
       case 'This Month':
       default:
-        return ReportsData.mockThisMonth();
+        return _thisMonth;
     }
   }
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'admin_panel/screens/admin_orders_screen.dart';
+import 'admin_panel/screens/admin_shell_screen.dart';
 import 'admin_panel/theme/admin_colors.dart';
 
 void main() async {
@@ -44,7 +44,7 @@ class SeatAndSetAdminApp extends StatelessWidget {
         colorSchemeSeed: AdminColors.primaryButton,
         fontFamily: 'Roboto',
       ),
-      home: home ?? const AdminOrdersScreen(),
+      home: home ?? const AdminShellScreen(),
     );
   }
 }

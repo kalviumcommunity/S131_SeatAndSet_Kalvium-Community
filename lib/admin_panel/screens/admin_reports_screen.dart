@@ -8,7 +8,14 @@ import 'admin_orders_screen.dart';
 import 'admin_customers_screen.dart';
 
 class AdminReportsScreen extends StatefulWidget {
-  const AdminReportsScreen({super.key});
+  final bool showBottomNav;
+  final ValueChanged<int>? onNavigateTab;
+
+  const AdminReportsScreen({
+    super.key,
+    this.showBottomNav = true,
+    this.onNavigateTab,
+  });
 
   @override
   State<AdminReportsScreen> createState() => _AdminReportsScreenState();
@@ -361,10 +368,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               ),
             ),
 
-          SizedBox(
-            height: chartHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          RepaintBoundary(
+            child: SizedBox(
+              height: chartHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Y-axis labels
                 Column(
@@ -471,6 +479,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               ],
             ),
           ),
+        ),
 
           const SizedBox(height: 8),
 
@@ -666,6 +675,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   // Bottom Navigation Bar
   // ---------------------------------------------------------------------------
   Widget _buildBottomNavigationBar() {
+    if (!widget.showBottomNav) return const SizedBox.shrink();
+
     final navItems = [
       _NavItem(icon: Icons.grid_view_rounded, label: 'Dashboard'),
       _NavItem(icon: Icons.inventory_2_outlined, label: 'Inventory'),
@@ -697,6 +708,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               item: navItems[i],
               isSelected: i == 4, // Reports is selected
               onTap: () {
+                if (widget.onNavigateTab != null) {
+                  widget.onNavigateTab!(i);
+                  return;
+                }
                 if (i == 0) {
                   Navigator.pushReplacement(
                     context,

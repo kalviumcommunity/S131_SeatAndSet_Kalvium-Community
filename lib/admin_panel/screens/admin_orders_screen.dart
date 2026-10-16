@@ -8,7 +8,14 @@ import 'admin_customers_screen.dart';
 import 'admin_reports_screen.dart';
 
 class AdminOrdersScreen extends StatefulWidget {
-  const AdminOrdersScreen({super.key});
+  final bool showBottomNav;
+  final ValueChanged<int>? onNavigateTab;
+
+  const AdminOrdersScreen({
+    super.key,
+    this.showBottomNav = true,
+    this.onNavigateTab,
+  });
 
   @override
   State<AdminOrdersScreen> createState() => _AdminOrdersScreenState();
@@ -710,6 +717,8 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
+    if (!widget.showBottomNav) return const SizedBox.shrink();
+
     final navItems = [
       _NavItem(icon: Icons.grid_view_rounded, label: 'Dashboard'),
       _NavItem(icon: Icons.inventory_2_outlined, label: 'Inventory'),
@@ -741,6 +750,10 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               item: navItems[i],
               isSelected: i == 2, // Orders is selected
               onTap: () {
+                if (widget.onNavigateTab != null) {
+                  widget.onNavigateTab!(i);
+                  return;
+                }
                 if (i == 0) {
                   Navigator.pushReplacement(
                     context,

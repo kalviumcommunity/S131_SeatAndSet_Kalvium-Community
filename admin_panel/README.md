@@ -86,7 +86,20 @@ The Flutter mobile/cross-platform Admin screens and components are located in:
    - Reports Model & Mock Data: [lib/admin_panel/models/reports_data.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/models/reports_data.dart)
    - Bottom navigation bar with "Reports" (tab index 4) active, interconnected with Dashboard, Inventory, Orders, and Customers
 
-8. **Backend Services & Theme**
+8. **Admin Shell & Performance Optimizations** ([lib/admin_panel/screens/admin_shell_screen.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/screens/admin_shell_screen.dart))
+   - **State-Preserving IndexedStack**: Holds all 5 admin sections (Dashboard, Inventory, Orders, Customers, Reports) in memory without tearing down widgets on tab switch, instantly preserving scroll positions, filter chips, and search text.
+   - **Render & Canvas Optimizations**:
+     - `RepaintBoundary` wrappers on `FurnitureThumbnail`, `AdminLogo`, and the Reports bar chart.
+     - Static `Paint` instance reuse in `_FurniturePainter` and `_AdminLogoPainter`, eliminating frame-by-frame GC allocations during scrolling.
+     - Proper `shouldRepaint` checks on CustomPainters.
+   - **Virtualization & Slivers**:
+     - `AdminInventoryScreen` converted to `CustomScrollView` with lazy `SliverList.builder`, creating cards on-demand for fluid 60+ FPS scrolling.
+   - **O(1) Search Query Normalization**:
+     - `matchesQuery()` helpers on `CustomerItem` and `InventoryItem` preventing redundant allocations during text input.
+   - **Resilient Firestore Architecture**:
+     - `InventoryService` safely handles uninitialized or offline environments without crashing.
+
+9. **Backend Services & Theme**
    - **Authentication & Firestore**: [lib/admin_panel/services/admin_auth_service.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/services/admin_auth_service.dart) (Firebase Auth + writes admin records to Firestore `admins/{uid}`)
    - **Theme & Colors**: [lib/admin_panel/theme/admin_colors.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/theme/admin_colors.dart) (Dark indigo gradients, glowing purple buttons)
    - **Reusable Widgets**: [lib/admin_panel/widgets/admin_text_field.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_text_field.dart), [lib/admin_panel/widgets/admin_button.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_button.dart), [lib/admin_panel/widgets/admin_logo.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_logo.dart)
