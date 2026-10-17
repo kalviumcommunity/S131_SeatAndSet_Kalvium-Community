@@ -6,6 +6,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_customers_screen.dart';
+import '../widgets/admin_animations.dart';
 
 class AdminReportsScreen extends StatefulWidget {
   final bool showBottomNav;
@@ -199,8 +200,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             letterSpacing: -0.5,
           ),
         ),
-        GestureDetector(
+        BouncingScaleTap(
           onTap: _showTimeframePicker,
+          scaleDown: 0.94,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
@@ -251,67 +253,70 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     required String label,
     required String growth,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFEAECEF),
-          width: 0.8,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+    return BouncingScaleTap(
+      scaleDown: 0.98,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFEAECEF),
+            width: 0.8,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 27,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1B1D28),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF7EE),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  growth,
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x05000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF22C55E),
+                    fontSize: 27,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1B1D28),
+                    letterSpacing: -0.5,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF8E95A5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF7EE),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    growth,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF22C55E),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF8E95A5),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -580,7 +585,24 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       child: Column(
         children: [
           for (int i = 0; i < categories.length; i++) ...[
-            _buildCategoryRow(categories[i]),
+            StaggeredSlideFade(
+              index: i,
+              child: BouncingScaleTap(
+                scaleDown: 0.97,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: const Color(0xFF5D5FEF),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      content: Text('${categories[i].name}: ${categories[i].count} rentals'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                child: _buildCategoryRow(categories[i]),
+              ),
+            ),
             if (i < categories.length - 1) const SizedBox(height: 16),
           ],
         ],

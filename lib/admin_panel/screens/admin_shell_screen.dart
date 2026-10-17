@@ -5,6 +5,7 @@ import 'admin_inventory_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_customers_screen.dart';
 import 'admin_reports_screen.dart';
+import '../widgets/admin_animations.dart';
 
 /// Performance-optimized state-preserving Navigation Shell for the Admin Panel.
 ///
@@ -121,44 +122,54 @@ class AdminShellScreenState extends State<AdminShellScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return BouncingScaleTap(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+      scaleDown: 0.90,
+      duration: const Duration(milliseconds: 90),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isSelected)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF0FE),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Icon(
-                item.icon,
-                size: 22,
-                color: const Color(0xFF5D5FEF),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Icon(
-                item.icon,
-                size: 22,
-                color: const Color(0xFF9AA0B2),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(
+              horizontal: isSelected ? 18 : 12,
+              vertical: 5,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFFEEF0FE) : Colors.transparent,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isSelected ? const Color(0xFFDDE1FD) : Colors.transparent,
+                width: 1,
               ),
             ),
+            child: AnimatedScale(
+              scale: isSelected ? 1.08 : 1.0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutBack,
+              child: Icon(
+                item.icon,
+                size: 22,
+                color: isSelected
+                    ? const Color(0xFF5D5FEF)
+                    : const Color(0xFF9AA0B2),
+              ),
+            ),
+          ),
           const SizedBox(height: 3),
-          Text(
-            item.label,
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
             style: TextStyle(
+              fontFamily: 'Roboto',
               fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
                   ? const Color(0xFF5D5FEF)
                   : const Color(0xFF8E95A5),
+              letterSpacing: isSelected ? 0.2 : 0.0,
             ),
+            child: Text(item.label),
           ),
         ],
       ),
