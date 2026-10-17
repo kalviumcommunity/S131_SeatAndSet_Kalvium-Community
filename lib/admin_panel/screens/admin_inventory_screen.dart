@@ -9,6 +9,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_customers_screen.dart';
 import 'admin_reports_screen.dart';
+import '../widgets/admin_animations.dart';
 
 
 class AdminInventoryScreen extends StatefulWidget {
@@ -509,8 +510,10 @@ void initState() {
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             sliver: SliverList.builder(
                               itemCount: filteredItems.length,
-                              itemBuilder: (context, index) =>
-                                  _buildInventoryCard(filteredItems[index]),
+                              itemBuilder: (context, index) => StaggeredSlideFade(
+                                index: index,
+                                child: _buildInventoryCard(filteredItems[index]),
+                              ),
                             ),
                           ),
                         const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -588,21 +591,25 @@ void initState() {
               ),
             ),
             const SizedBox(width: 10),
-            FilledButton.icon(
-              onPressed: _showAddFurnitureDialog,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 13,
+            BouncingScaleTap(
+              scaleDown: 0.94,
+              onTap: _showAddFurnitureDialog,
+              child: FilledButton.icon(
+                onPressed: _showAddFurnitureDialog,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 13,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Add'),
               ),
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add'),
             ),
           ],
         ),
@@ -665,29 +672,30 @@ void initState() {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          height: 50,
-          width: 50,
-          decoration: BoxDecoration(
-            color: _selectedStatusFilter != null
-                ? const Color(0xFFEEF2FF)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: _selectedStatusFilter != null
-                ? Border.all(
-                    color: const Color(0xFF4F46E5),
-                    width: 1.2,
-                  )
-                : null,
-          ),
-          child: IconButton(
-            icon: Icon(
+        BouncingScaleTap(
+          scaleDown: 0.92,
+          onTap: _showFilterModal,
+          child: Container(
+            height: 50,
+            width: 50,
+            decoration: BoxDecoration(
+              color: _selectedStatusFilter != null
+                  ? const Color(0xFFEEF2FF)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: _selectedStatusFilter != null
+                  ? Border.all(
+                      color: const Color(0xFF4F46E5),
+                      width: 1.2,
+                    )
+                  : null,
+            ),
+            child: Icon(
               Icons.tune_rounded,
               color: _selectedStatusFilter != null
                   ? const Color(0xFF4F46E5)
                   : const Color(0xFF0F172A),
             ),
-            onPressed: _showFilterModal,
           ),
         ),
       ],
@@ -710,10 +718,21 @@ void initState() {
         badgeText = const Color(0xFFEA580C);
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+    return BouncingScaleTap(
+      scaleDown: 0.98,
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${item.name} (${item.sku}) • ${item.statusLabel}'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
@@ -797,6 +816,7 @@ void initState() {
           ),
         ],
       ),
+    ),
     );
   }
 

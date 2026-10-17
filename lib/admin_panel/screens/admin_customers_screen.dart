@@ -6,6 +6,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_reports_screen.dart';
+import '../widgets/admin_animations.dart';
 
 class AdminCustomersScreen extends StatefulWidget {
   final bool showBottomNav;
@@ -350,7 +351,10 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
-                          return _buildCustomerCard(filtered[index]);
+                          return StaggeredSlideFade(
+                            index: index,
+                            child: _buildCustomerCard(filtered[index]),
+                          );
                         },
                       ),
               ),
@@ -365,23 +369,23 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
   }
 
   Widget _buildCustomerCard(CustomerItem customer) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: () => _showCustomerDetailsSheet(customer),
-        borderRadius: BorderRadius.circular(16),
+    return BouncingScaleTap(
+      scaleDown: 0.98,
+      onTap: () => _showCustomerDetailsSheet(customer),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x060F172A),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
         child: Row(
           children: [
             // Avatar with initials
