@@ -127,9 +127,19 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           child: Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: RefreshIndicator(
+                  color: const Color(0xFF5D5FEF),
+                  backgroundColor: Colors.white,
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await Future<void>.delayed(const Duration(milliseconds: 500));
+                    if (mounted) setState(() {});
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -175,6 +185,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                     ],
                   ),
                 ),
+              ),
               ),
               _buildBottomNavigationBar(),
             ],

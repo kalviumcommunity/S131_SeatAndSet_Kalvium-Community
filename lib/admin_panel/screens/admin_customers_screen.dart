@@ -347,15 +347,27 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
               Expanded(
                 child: filtered.isEmpty
                     ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          return StaggeredSlideFade(
-                            index: index,
-                            child: _buildCustomerCard(filtered[index]),
-                          );
+                    : RefreshIndicator(
+                        color: const Color(0xFF5D5FEF),
+                        backgroundColor: Colors.white,
+                        onRefresh: () async {
+                          HapticFeedback.lightImpact();
+                          await Future<void>.delayed(const Duration(milliseconds: 500));
+                          if (mounted) setState(() {});
                         },
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            return StaggeredSlideFade(
+                              index: index,
+                              child: _buildCustomerCard(filtered[index]),
+                            );
+                          },
+                        ),
                       ),
               ),
 

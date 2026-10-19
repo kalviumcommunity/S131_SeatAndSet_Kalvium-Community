@@ -447,9 +447,19 @@ void initState() {
                     final allItems = snapshot.data ?? <InventoryItem>[];
                     final filteredItems = _filterItems(allItems);
 
-                    return CustomScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      slivers: [
+                    return RefreshIndicator(
+                      color: const Color(0xFF4F46E5),
+                      backgroundColor: Colors.white,
+                      onRefresh: () async {
+                        HapticFeedback.lightImpact();
+                        await Future<void>.delayed(const Duration(milliseconds: 500));
+                        if (mounted) setState(() {});
+                      },
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        slivers: [
                         SliverPadding(
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                           sliver: SliverToBoxAdapter(
@@ -518,6 +528,7 @@ void initState() {
                           ),
                         const SliverToBoxAdapter(child: SizedBox(height: 16)),
                       ],
+                    ),
                     );
                   },
                 ),
