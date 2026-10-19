@@ -10,25 +10,155 @@ service cloud.firestore {
       return signedIn() && request.auth.token.admin == true;
     }
 
+    function hasOnlyKeys(data, keys) {
+      return data.keys().hasOnly(keys);
+    }
+
+    function validFurniture(data) {
+      return hasOnlyKeys(
+          data,
+          ['name', 'sku', 'status', 'type', 'createdAt', 'updatedAt']) &&
+        data.name is string &&
+        data.name.size() > 0 &&
+        data.sku is string &&
+        data.sku.size() > 0 &&
+        data.status in ['rented', 'available', 'inTransit'] &&
+        data.type in [
+          'sofa',
+          'studyTable',
+          'officeChair',
+          'bed',
+          'diningTable'
+        ] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validBooking(data) {
+      return hasOnlyKeys(
+          data,
+          [
+            'customerId',
+            'furnitureId',
+            'startDate',
+            'endDate',
+            'status',
+            'createdAt',
+            'updatedAt'
+          ]) &&
+        data.customerId is string &&
+        data.customerId.size() > 0 &&
+        data.furnitureId is string &&
+        data.furnitureId.size() > 0 &&
+        data.startDate is timestamp &&
+        data.endDate is timestamp &&
+        data.endDate > data.startDate &&
+        data.status in [
+          'reserved',
+          'scheduled',
+          'outForDelivery',
+          'delivered',
+          'active',
+          'pickupScheduled',
+          'pickedUp',
+          'returned',
+          'cancelled'
+        ] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validDelivery(data) {
+      return hasOnlyKeys(
+          data,
+          [
+            'bookingId',
+            'furnitureId',
+            'customerId',
+            'type',
+            'scheduledAt',
+            'status',
+            'assignedStaffId',
+            'notes',
+            'createdAt',
+            'updatedAt'
+          ]) &&
+        data.bookingId is string &&
+        data.bookingId.size() > 0 &&
+        data.furnitureId is string &&
+        data.furnitureId.size() > 0 &&
+        data.customerId is string &&
+        data.customerId.size() > 0 &&
+        data.type in ['delivery', 'pickup'] &&
+        data.scheduledAt is timestamp &&
+        data.status in [
+          'scheduled',
+          'inProgress',
+          'completed',
+          'delayed',
+          'cancelled'
+        ] &&
+        (!('assignedStaffId' in data) ||
+          data.assignedStaffId == null ||
+          (data.assignedStaffId is string && data.assignedStaffId.size() > 0)) &&
+        (!('notes' in data) ||
+          data.notes == null ||
+          (data.notes is string && data.notes.size() <= 1000)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validLock(data, furnitureId) {
+      return hasOnlyKeys(data, ['furnitureId', 'reservations', 'updatedAt']) &&
+        data.furnitureId is string &&
+        data.furnitureId == furnitureId &&
+        data.reservations is map &&
+        data.updatedAt is timestamp;
+    }
+
     match /admins/{uid} {
       allow read: if isAdmin() && request.auth.uid == uid;
       allow write: if false;
     }
 
     match /furniture/{furnitureId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validFurniture(request.resource.data);
+      allow update: if isAdmin() &&
+        validFurniture(request.resource.data) &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin() &&
+        resource.data.status == 'available';
     }
 
     match /bookings/{bookingId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validBooking(request.resource.data);
+      allow update: if isAdmin() &&
+        validBooking(request.resource.data) &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin() && validBooking(resource.data);
     }
 
     match /deliveries/{deliveryId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validDelivery(request.resource.data);
+      allow update: if isAdmin() &&
+        validDelivery(request.resource.data) &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.bookingId == resource.data.bookingId &&
+        request.resource.data.furnitureId == resource.data.furnitureId &&
+        request.resource.data.customerId == resource.data.customerId &&
+        request.resource.data.type == resource.data.type;
+      allow delete: if isAdmin() && validDelivery(resource.data);
     }
 
     match /furniture_booking_locks/{furnitureId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() &&
+        validLock(request.resource.data, furnitureId);
+      allow delete: if isAdmin() &&
+        validLock(resource.data, furnitureId);
     }
 
     match /{document=**} {
