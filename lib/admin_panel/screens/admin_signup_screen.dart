@@ -4,7 +4,7 @@ import '../widgets/admin_logo.dart';
 import '../widgets/admin_text_field.dart';
 import '../widgets/admin_button.dart';
 import '../services/admin_auth_service.dart';
-import 'admin_dashboard_screen.dart';
+import 'admin_shell_screen.dart';
 
 class AdminSignupScreen extends StatefulWidget {
   const AdminSignupScreen({super.key});
@@ -87,7 +87,7 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
       );
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        MaterialPageRoute(builder: (_) => const AdminShellScreen()),
         (route) => false,
       );
     } else {

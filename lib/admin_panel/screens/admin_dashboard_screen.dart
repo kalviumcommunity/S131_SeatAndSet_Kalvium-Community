@@ -87,8 +87,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: RefreshIndicator(
+                  color: const Color(0xFF4F46E5),
+                  backgroundColor: Colors.white,
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await Future<void>.delayed(const Duration(milliseconds: 500));
+                    if (mounted) setState(() {});
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   children: [
                     // Top App Header
                     _buildHeader(),
@@ -107,6 +118,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 24),
                   ],
                 ),
+              ),
               ),
               // Bottom Navigation Bar
               _buildBottomNavigationBar(),

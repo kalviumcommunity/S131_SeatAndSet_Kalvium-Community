@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
@@ -55,35 +56,42 @@ class AdminShellScreenState extends State<AdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          AdminDashboardScreen(
-            showBottomNav: false,
-            onNavigateTab: switchTab,
-          ),
-          AdminInventoryScreen(
-            inventoryService: widget.inventoryService,
-            showBottomNav: false,
-            onNavigateTab: switchTab,
-          ),
-          AdminOrdersScreen(
-            showBottomNav: false,
-            onNavigateTab: switchTab,
-          ),
-          AdminCustomersScreen(
-            showBottomNav: false,
-            onNavigateTab: switchTab,
-          ),
-          AdminReportsScreen(
-            showBottomNav: false,
-            onNavigateTab: switchTab,
-          ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
-      bottomNavigationBar: _buildMasterBottomNav(),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FC),
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            AdminDashboardScreen(
+              showBottomNav: false,
+              onNavigateTab: switchTab,
+            ),
+            AdminInventoryScreen(
+              inventoryService: widget.inventoryService,
+              showBottomNav: false,
+              onNavigateTab: switchTab,
+            ),
+            AdminOrdersScreen(
+              showBottomNav: false,
+              onNavigateTab: switchTab,
+            ),
+            AdminCustomersScreen(
+              showBottomNav: false,
+              onNavigateTab: switchTab,
+            ),
+            AdminReportsScreen(
+              showBottomNav: false,
+              onNavigateTab: switchTab,
+            ),
+          ],
+        ),
+        bottomNavigationBar: _buildMasterBottomNav(),
+      ),
     );
   }
 

@@ -6,7 +6,7 @@ import '../widgets/admin_button.dart';
 import '../widgets/admin_animations.dart';
 import '../services/admin_auth_service.dart';
 import 'admin_signup_screen.dart';
-import 'admin_dashboard_screen.dart';
+import 'admin_shell_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -61,7 +61,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       );
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        MaterialPageRoute(builder: (_) => const AdminShellScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,7 +82,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             onPressed: () {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+                MaterialPageRoute(builder: (_) => const AdminShellScreen()),
               );
             },
           ),
