@@ -6,6 +6,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_customers_screen.dart';
 import 'admin_reports_screen.dart';
+import '../widgets/admin_animations.dart';
 
 class AdminOrdersScreen extends StatefulWidget {
   final bool showBottomNav;
@@ -424,7 +425,10 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
-                          return _buildOrderCard(filtered[index]);
+                          return StaggeredSlideFade(
+                            index: index,
+                            child: _buildOrderCard(filtered[index]),
+                          );
                         },
                       ),
               ),
@@ -466,9 +470,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     final isSelected = _selectedTab == tab;
 
     return Expanded(
-      child: GestureDetector(
+      child: BouncingScaleTap(
         onTap: () => setState(() => _selectedTab = tab),
-        behavior: HitTestBehavior.opaque,
+        scaleDown: 0.94,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
@@ -492,51 +496,51 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   }
 
   Widget _buildOrderCard(OrderDeliveryItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Icon badge (Deliver vs Pickup)
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: item.isDeliver
-                  ? const Color(0xFFEEF0FE)
-                  : const Color(0xFFFFEEED),
-              borderRadius: BorderRadius.circular(16),
+    return BouncingScaleTap(
+      scaleDown: 0.98,
+      onTap: () => _showOrderDetails(item),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x060F172A),
+              blurRadius: 12,
+              offset: Offset(0, 4),
             ),
-            child: Icon(
-              item.isDeliver
-                  ? Icons.local_shipping_outlined
-                  : Icons.store_mall_directory_outlined,
-              color: item.isDeliver
-                  ? const Color(0xFF5D5FEF)
-                  : const Color(0xFFEF4444),
-              size: 22,
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Icon badge (Deliver vs Pickup)
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: item.isDeliver
+                    ? const Color(0xFFEEF0FE)
+                    : const Color(0xFFFFEEED),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                item.isDeliver
+                    ? Icons.local_shipping_outlined
+                    : Icons.store_mall_directory_outlined,
+                color: item.isDeliver
+                    ? const Color(0xFF5D5FEF)
+                    : const Color(0xFFEF4444),
+                size: 22,
+              ),
             ),
-          ),
 
-          const SizedBox(width: 14),
+            const SizedBox(width: 14),
 
-          // Details column
-          Expanded(
-            child: InkWell(
-              onTap: () => _showOrderDetails(item),
-              borderRadius: BorderRadius.circular(12),
+            // Details column
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -598,7 +602,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                 ],
               ),
             ),
-          ),
 
           const SizedBox(width: 8),
 
@@ -679,6 +682,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

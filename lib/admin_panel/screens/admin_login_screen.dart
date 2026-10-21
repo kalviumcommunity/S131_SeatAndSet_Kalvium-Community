@@ -3,6 +3,7 @@ import '../theme/admin_colors.dart';
 import '../widgets/admin_logo.dart';
 import '../widgets/admin_text_field.dart';
 import '../widgets/admin_button.dart';
+import '../widgets/admin_animations.dart';
 import '../services/admin_auth_service.dart';
 import 'admin_signup_screen.dart';
 import 'admin_dashboard_screen.dart';
@@ -168,41 +169,48 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const SizedBox(height: 20),
-                      // Brand Logo Emblem
-                      const AdminLogo(size: 58),
-                      const SizedBox(height: 22),
-                      // Heading
-                      const Text(
-                        'Seat and Set',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 27,
-                          fontWeight: FontWeight.w700,
-                          color: AdminColors.textPrimary,
-                          letterSpacing: 0.2,
-                          height: 1.15,
-                        ),
-                      ),
-                      const Text(
-                        'Admin',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 27,
-                          fontWeight: FontWeight.w700,
-                          color: AdminColors.textPrimary,
-                          letterSpacing: 0.2,
-                          height: 1.15,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Subtitle
-                      const Text(
-                        'Operations at your fingertips',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w400,
-                          color: AdminColors.textSecondary,
+                      StaggeredSlideFade(
+                        index: 0,
+                        child: Column(
+                          children: const [
+                            // Brand Logo Emblem
+                            AdminLogo(size: 58),
+                            SizedBox(height: 22),
+                            // Heading
+                            Text(
+                              'Seat and Set',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 27,
+                                fontWeight: FontWeight.w700,
+                                color: AdminColors.textPrimary,
+                                letterSpacing: 0.2,
+                                height: 1.15,
+                              ),
+                            ),
+                            Text(
+                              'Admin',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 27,
+                                fontWeight: FontWeight.w700,
+                                color: AdminColors.textPrimary,
+                                letterSpacing: 0.2,
+                                height: 1.15,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            // Subtitle
+                            Text(
+                              'Operations at your fingertips',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w400,
+                                color: AdminColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 38),
@@ -261,7 +269,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       const SizedBox(height: 18),
 
                       // Forgot Password Link
-                      GestureDetector(
+                      BouncingScaleTap(
+                        scaleDown: 0.95,
                         onTap: _showForgotPasswordDialog,
                         child: const Text(
                           'Forgot Password?',
@@ -285,7 +294,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                               fontSize: 13.5,
                             ),
                           ),
-                          GestureDetector(
+                          BouncingScaleTap(
+                            scaleDown: 0.92,
                             onTap: () {
                               Navigator.push(
                                 context,

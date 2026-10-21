@@ -99,7 +99,14 @@ The Flutter mobile/cross-platform Admin screens and components are located in:
    - **Resilient Firestore Architecture**:
      - `InventoryService` safely handles uninitialized or offline environments without crashing.
 
-9. **Backend Services & Theme**
+10. **UI/UX Animations & Tactile Micro-Interactions** ([lib/admin_panel/widgets/admin_animations.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_animations.dart))
+   - **Tactile Spring Physics (`BouncingScaleTap`)**: All interactive cards (KPI cards, delivery items, customers, inventory items), buttons, filter pills, and bottom navigation tabs subtly scale down to `0.92-0.98` with cubic spring physics and haptic vibration on tap.
+   - **Live Pulsing Glow Badge (`PulsingGlowBadge`)**: Real-time breathing pulse animation on active statuses ("No delays today", new notification indicators).
+   - **Animated Metric Counters (`AnimatedCounter`)**: Smooth count-up number interpolation on dashboard KPI metrics and deliveries.
+   - **Staggered Entry Cascades (`StaggeredSlideFade`)**: Smooth 40ms-staggered slide-up and fade-in entrances for lists, cards, and activity feeds.
+   - **Animated Shell Navigation**: Bottom navigation tabs feature morphing container pills, active scale pops, and color interpolation.
+
+11. **Backend Services & Theme**
    - **Authentication & Firestore**: [lib/admin_panel/services/admin_auth_service.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/services/admin_auth_service.dart) (Firebase Auth + writes admin records to Firestore `admins/{uid}`)
    - **Theme & Colors**: [lib/admin_panel/theme/admin_colors.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/theme/admin_colors.dart) (Dark indigo gradients, glowing purple buttons)
    - **Reusable Widgets**: [lib/admin_panel/widgets/admin_text_field.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_text_field.dart), [lib/admin_panel/widgets/admin_button.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_button.dart), [lib/admin_panel/widgets/admin_logo.dart](file:///c:/Users/MARKOSE/OneDrive/Desktop/College/SEM-3/seat%20and%20set/lib/admin_panel/widgets/admin_logo.dart)
