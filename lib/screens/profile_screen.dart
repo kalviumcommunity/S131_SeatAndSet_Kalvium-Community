@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/common/app_bottom_nav.dart';
 import '../widgets/common/screen_header.dart';
 import 'edit_profile_screen.dart';
 import 'favorites_screen.dart';
@@ -38,6 +39,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenPadding,
@@ -240,6 +242,7 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.profile),
     );
   }
 }

@@ -1,30 +1,28 @@
-// This is a basic Flutter widget test.
+// Smoke test for the Seat & Set app's initial navigation flow.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Verifies the app boots into the onboarding screen, and that "Skip"
+// navigates on to Sign In — the first real interaction a user has with
+// the app.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:seat_and_set/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('App starts on onboarding and Skip leads to Sign In', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const SeatAndSetApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Onboarding screen is shown first, with its "Skip" button.
+    expect(find.text('Skip'), findsOneWidget);
+    expect(find.text('Welcome Back'), findsNothing);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Skipping onboarding lands on Sign In.
+    expect(find.text('Welcome Back'), findsOneWidget);
   });
 }

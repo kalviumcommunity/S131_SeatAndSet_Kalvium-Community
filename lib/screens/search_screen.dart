@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/category_chip.dart';
+import '../widgets/common/app_bottom_nav.dart';
 import '../widgets/common/screen_header.dart';
 import '../widgets/furniture_card.dart';
 import 'product_details_screen.dart';
@@ -38,6 +39,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenPadding,
@@ -125,6 +127,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
       ),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.browse),
     );
   }
 }

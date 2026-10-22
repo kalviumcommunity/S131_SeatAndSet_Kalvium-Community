@@ -32,6 +32,7 @@ class AppBottomNav extends StatelessWidget {
   }
 
   void _goBrowse(BuildContext context) {
+    if (current == AppTab.browse) return;
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => const SearchScreen()));
