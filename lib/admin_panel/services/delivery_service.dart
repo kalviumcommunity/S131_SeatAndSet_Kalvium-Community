@@ -69,6 +69,19 @@ class DeliveryService {
           'Delivery references do not match the associated booking.',
         );
       }
+      if (booking.status == BookingStatus.cancelled ||
+          booking.status == BookingStatus.returned) {
+        throw StateError(
+          'Cannot create a delivery for a cancelled or returned booking.',
+        );
+      }
+      if (delivery.type == DeliveryType.pickup &&
+          booking.status != BookingStatus.delivered &&
+          booking.status != BookingStatus.active) {
+        throw StateError(
+          'A pickup requires a delivered or active booking.',
+        );
+      }
 
       transaction.set(document, {
         ...delivery.toMap(),
@@ -308,6 +321,21 @@ class DeliveryService {
       );
       if (booking.furnitureId != delivery.furnitureId) {
         throw StateError('Delivery furniture does not match the booking.');
+      }
+      if (expectedType == DeliveryType.delivery &&
+          (booking.status == BookingStatus.cancelled ||
+              booking.status == BookingStatus.returned)) {
+        throw StateError(
+          'Cannot complete delivery for a cancelled or returned booking.',
+        );
+      }
+      if (expectedType == DeliveryType.pickup &&
+          booking.status != BookingStatus.delivered &&
+          booking.status != BookingStatus.active &&
+          booking.status != BookingStatus.pickedUp) {
+        throw StateError(
+          'A pickup requires a delivered or active booking.',
+        );
       }
 
       final bookingStatus = expectedType == DeliveryType.delivery

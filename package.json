@@ -1,0 +1,28 @@
+{
+  "name": "s131_seatandset_kalvium-community",
+  "version": "1.0.0",
+  "description": "Cross-platform mobile application built with Flutter, Dart, and Firebase.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kalviumcommunity/S131_SeatAndSet_Kalvium-Community.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kalviumcommunity/S131_SeatAndSet_Kalvium-Community/issues"
+  },
+  "homepage": "https://github.com/kalviumcommunity/S131_SeatAndSet_Kalvium-Community#readme",
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0"
+  }
+}
