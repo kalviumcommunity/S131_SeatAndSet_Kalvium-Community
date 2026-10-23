@@ -6,15 +6,23 @@ import '../models/inventory_item.dart';
 import '../services/inventory_service.dart';
 import '../widgets/furniture_thumbnail.dart';
 import 'admin_dashboard_screen.dart';
+import 'admin_orders_screen.dart';
+import 'admin_customers_screen.dart';
+import 'admin_reports_screen.dart';
+import '../widgets/admin_animations.dart';
 
 
 class AdminInventoryScreen extends StatefulWidget {
   const AdminInventoryScreen({
     super.key,
     this.inventoryService,
+    this.showBottomNav = true,
+    this.onNavigateTab,
   });
 
   final InventoryService? inventoryService;
+  final bool showBottomNav;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<AdminInventoryScreen> createState() =>
@@ -56,10 +64,7 @@ void initState() {
     final query = _searchController.text.toLowerCase().trim();
 
     return items.where((item) {
-      final matchesQuery = query.isEmpty ||
-          item.name.toLowerCase().contains(query) ||
-          item.sku.toLowerCase().contains(query);
-
+      final matchesQuery = item.matchesQuery(query);
       final matchesStatus = _selectedStatusFilter == null ||
           item.status == _selectedStatusFilter;
 
@@ -436,75 +441,96 @@ void initState() {
           child: Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 18),
-                    _buildSearchAndFilterRow(),
-                    const SizedBox(height: 18),
-                    StreamBuilder<List<InventoryItem>>(
-                      stream: _inventoryService.watchFurniture(),
-                      builder: (context, snapshot) {
+                child: StreamBuilder<List<InventoryItem>>(
+                  stream: _inventoryService.watchFurniture(),
+                  builder: (context, snapshot) {
+                    final allItems = snapshot.data ?? <InventoryItem>[];
+                    final filteredItems = _filterItems(allItems);
+
+                    return RefreshIndicator(
+                      color: const Color(0xFF4F46E5),
+                      backgroundColor: Colors.white,
+                      onRefresh: () async {
+                        HapticFeedback.lightImpact();
+                        await Future<void>.delayed(const Duration(milliseconds: 500));
+                        if (mounted) setState(() {});
+                      },
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                          sliver: SliverToBoxAdapter(
+                            child: Column(
+                              children: [
+                                _buildHeader(),
+                                const SizedBox(height: 18),
+                                _buildSearchAndFilterRow(),
+                                const SizedBox(height: 18),
+                              ],
+                            ),
+                          ),
+                        ),
                         if (snapshot.connectionState ==
                                 ConnectionState.waiting &&
-                            !snapshot.hasData) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 60,
-                            ),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: Color(0xFF4F46E5),
+                            !snapshot.hasData)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 60,
+                              ),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF4F46E5),
+                                ),
                               ),
                             ),
-                          );
-                        }
-
-                        if (snapshot.hasError) {
-                          return _buildMessage(
-                            'Unable to load inventory. Check your '
-                            'connection and Firestore permissions.',
-                            icon: Icons.cloud_off_outlined,
-                            action: TextButton(
-                              onPressed: () => setState(() {}),
-                              child: const Text('Retry'),
+                          )
+                        else if (snapshot.hasError)
+                          SliverToBoxAdapter(
+                            child: _buildMessage(
+                              'Unable to load inventory. Check your '
+                              'connection and Firestore permissions.',
+                              icon: Icons.cloud_off_outlined,
+                              action: TextButton(
+                                onPressed: () => setState(() {}),
+                                child: const Text('Retry'),
+                              ),
                             ),
-                          );
-                        }
-
-                        final allItems =
-                            snapshot.data ?? <InventoryItem>[];
-                        final filteredItems =
-                            _filterItems(allItems);
-
-                        if (allItems.isEmpty) {
-                          return _buildMessage(
-                            'No furniture has been added yet. '
-                            'Use the Add Furniture button to get started.',
-                            icon: Icons.inventory_2_outlined,
-                          );
-                        }
-
-                        if (filteredItems.isEmpty) {
-                          return _buildMessage(
-                            'No items match your search or filter.',
-                            icon: Icons.search_off_rounded,
-                          );
-                        }
-
-                        return Column(
-                          children: filteredItems
-                              .map(_buildInventoryCard)
-                              .toList(),
-                        );
-                      },
+                          )
+                        else if (allItems.isEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildMessage(
+                              'No furniture has been added yet. '
+                              'Use the Add Furniture button to get started.',
+                              icon: Icons.inventory_2_outlined,
+                            ),
+                          )
+                        else if (filteredItems.isEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildMessage(
+                              'No items match your search or filter.',
+                              icon: Icons.search_off_rounded,
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            sliver: SliverList.builder(
+                              itemCount: filteredItems.length,
+                              itemBuilder: (context, index) => StaggeredSlideFade(
+                                index: index,
+                                child: _buildInventoryCard(filteredItems[index]),
+                              ),
+                            ),
+                          ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                    );
+                  },
                 ),
               ),
               _buildBottomNavigationBar(),
@@ -576,21 +602,25 @@ void initState() {
               ),
             ),
             const SizedBox(width: 10),
-            FilledButton.icon(
-              onPressed: _showAddFurnitureDialog,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 13,
+            BouncingScaleTap(
+              scaleDown: 0.94,
+              onTap: _showAddFurnitureDialog,
+              child: FilledButton.icon(
+                onPressed: _showAddFurnitureDialog,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 13,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Add'),
               ),
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add'),
             ),
           ],
         ),
@@ -653,29 +683,30 @@ void initState() {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          height: 50,
-          width: 50,
-          decoration: BoxDecoration(
-            color: _selectedStatusFilter != null
-                ? const Color(0xFFEEF2FF)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: _selectedStatusFilter != null
-                ? Border.all(
-                    color: const Color(0xFF4F46E5),
-                    width: 1.2,
-                  )
-                : null,
-          ),
-          child: IconButton(
-            icon: Icon(
+        BouncingScaleTap(
+          scaleDown: 0.92,
+          onTap: _showFilterModal,
+          child: Container(
+            height: 50,
+            width: 50,
+            decoration: BoxDecoration(
+              color: _selectedStatusFilter != null
+                  ? const Color(0xFFEEF2FF)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: _selectedStatusFilter != null
+                  ? Border.all(
+                      color: const Color(0xFF4F46E5),
+                      width: 1.2,
+                    )
+                  : null,
+            ),
+            child: Icon(
               Icons.tune_rounded,
               color: _selectedStatusFilter != null
                   ? const Color(0xFF4F46E5)
                   : const Color(0xFF0F172A),
             ),
-            onPressed: _showFilterModal,
           ),
         ),
       ],
@@ -698,10 +729,21 @@ void initState() {
         badgeText = const Color(0xFFEA580C);
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+    return BouncingScaleTap(
+      scaleDown: 0.98,
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${item.name} (${item.sku}) • ${item.statusLabel}'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
@@ -785,10 +827,13 @@ void initState() {
           ),
         ],
       ),
+    ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
+    if (!widget.showBottomNav) return const SizedBox.shrink();
+
     final navItems = [
       _NavItem(icon: Icons.grid_view_rounded, label: 'Dashboard'),
       _NavItem(icon: Icons.inventory_2_outlined, label: 'Inventory'),
@@ -813,6 +858,10 @@ void initState() {
               item: navItems[i],
               isSelected: i == 1,
               onTap: () {
+                if (widget.onNavigateTab != null) {
+                  widget.onNavigateTab!(i);
+                  return;
+                }
                 if (i == 0) {
                   Navigator.pushReplacement(
                     context,
@@ -822,12 +871,31 @@ void initState() {
                       transitionDuration: Duration.zero,
                     ),
                   );
-                } else if (i != 1) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${navItems[i].label} section coming soon!',
-                      ),
+                } else if (i == 2) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) =>
+                          const AdminOrdersScreen(),
+                      transitionDuration: Duration.zero,
+                    ),
+                  );
+                } else if (i == 3) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) =>
+                          const AdminCustomersScreen(),
+                      transitionDuration: Duration.zero,
+                    ),
+                  );
+                } else if (i == 4) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) =>
+                          const AdminReportsScreen(),
+                      transitionDuration: Duration.zero,
                     ),
                   );
                 }

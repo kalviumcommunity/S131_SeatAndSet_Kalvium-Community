@@ -6,14 +6,22 @@ import '../services/admin_auth_service.dart';
 import '../services/inventory_service.dart';
 import 'admin_login_screen.dart';
 import 'admin_inventory_screen.dart';
+import 'admin_orders_screen.dart';
+import 'admin_customers_screen.dart';
+import 'admin_reports_screen.dart';
+import '../widgets/admin_animations.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
+  final bool showBottomNav;
+  final ValueChanged<int>? onNavigateTab;
+  final InventoryService? inventoryService;
+
   const AdminDashboardScreen({
     super.key,
+    this.showBottomNav = true,
+    this.onNavigateTab,
     this.inventoryService,
   });
-
-  final InventoryService? inventoryService;
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -85,8 +93,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: RefreshIndicator(
+                  color: const Color(0xFF4F46E5),
+                  backgroundColor: Colors.white,
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await Future<void>.delayed(const Duration(milliseconds: 500));
+                    if (mounted) setState(() {});
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   children: [
                     // Top App Header
                     _buildHeader(),
@@ -105,6 +124,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 24),
                   ],
                 ),
+              ),
               ),
               // Bottom Navigation Bar
               _buildBottomNavigationBar(),
@@ -162,17 +182,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   size: 22,
                 ),
               ),
-              Positioned(
-                top: 8,
-                right: 9,
-                child: Container(
-                  height: 9,
-                  width: 9,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                  ),
+              const Positioned(
+                top: 4,
+                right: 4,
+                child: PulsingGlowBadge(
+                  color: Color(0xFFEF4444),
+                  size: 8,
                 ),
               ),
             ],
@@ -277,84 +292,112 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildKpiRow([List<InventoryItem>? items]) {
-    String countFor(InventoryStatus? status) {
+    dynamic countFor(InventoryStatus? status) {
       if (items == null) return '—';
-      if (status == null) return '${items.length}';
-      return '${items.where((item) => item.status == status).length}';
+      if (status == null) return items.length;
+      return items.where((item) => item.status == status).length;
     }
 
     return Row(
       children: [
         _buildKpiCard(
-          count: countFor(null),
+          index: 0,
+          value: countFor(null),
           label: 'Total Items',
           countColor: const Color(0xFF3730A3),
+          onTap: () => widget.onNavigateTab?.call(1),
         ),
         const SizedBox(width: 10),
         _buildKpiCard(
-          count: countFor(InventoryStatus.rented),
+          index: 1,
+          value: countFor(InventoryStatus.rented),
           label: 'Rented',
           countColor: const Color(0xFF16A34A),
+          onTap: () => widget.onNavigateTab?.call(1),
         ),
         const SizedBox(width: 10),
         _buildKpiCard(
-          count: countFor(InventoryStatus.available),
+          index: 2,
+          value: countFor(InventoryStatus.available),
           label: 'Available',
           countColor: const Color(0xFF2563EB),
+          onTap: () => widget.onNavigateTab?.call(1),
         ),
         const SizedBox(width: 10),
         _buildKpiCard(
-          count: countFor(InventoryStatus.inTransit),
+          index: 3,
+          value: countFor(InventoryStatus.inTransit),
           label: 'In Transit',
           countColor: const Color(0xFFDC2626),
+          onTap: () => widget.onNavigateTab?.call(1),
         ),
       ],
     );
   }
 
   Widget _buildKpiCard({
-    required String count,
+    required int index,
+    required dynamic value,
     required String label,
     required Color countColor,
+    required VoidCallback onTap,
   }) {
     return Expanded(
-      child: Container(
-        key: ValueKey(label),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x080F172A),
-              blurRadius: 10,
-              offset: Offset(0, 3),
+      child: StaggeredSlideFade(
+        index: index,
+        child: BouncingScaleTap(
+          onTap: onTap,
+          scaleDown: 0.94,
+          child: Container(
+            key: ValueKey(label),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x080F172A),
+                  blurRadius: 10,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              count,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: countColor,
-                letterSpacing: -0.5,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (value is num)
+                  AnimatedCounter(
+                    value: value,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: countColor,
+                      letterSpacing: -0.5,
+                    ),
+                  )
+                else
+                  Text(
+                    value.toString(),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: countColor,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -389,47 +432,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           child: Row(
             children: [
-              // Left: Deliveries
+              // Left: Deliveries (Tappable -> switch to Orders tab)
               Expanded(
-                child: Row(
-                  children: [
-                    Container(
-                      height: 44,
-                      width: 44,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEEF2FF),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.local_shipping_outlined,
-                        color: Color(0xFF6366F1),
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_dashboardData.deliveriesToday}',
-                          style: const TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF4F46E5),
-                          ),
+                child: BouncingScaleTap(
+                  onTap: () => widget.onNavigateTab?.call(2),
+                  child: Row(
+                    children: [
+                      Container(
+                        height: 44,
+                        width: 44,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEEF2FF),
+                          shape: BoxShape.circle,
                         ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Deliveries',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
-                          ),
+                        child: const Icon(
+                          Icons.local_shipping_outlined,
+                          color: Color(0xFF6366F1),
+                          size: 22,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnimatedCounter(
+                            value: _dashboardData.deliveriesToday,
+                            style: const TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF4F46E5),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Deliveries',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               // Vertical Divider
@@ -439,88 +485,105 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 color: const Color(0xFFF1F5F9),
               ),
               const SizedBox(width: 16),
-              // Right: Pickups
+              // Right: Pickups (Tappable -> switch to Orders tab)
               Expanded(
-                child: Row(
-                  children: [
-                    Container(
-                      height: 44,
-                      width: 44,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFEE2E2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.home_outlined,
-                        color: Color(0xFFEF4444),
-                        size: 23,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_dashboardData.pickupsToday}',
-                          style: const TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFDC2626),
-                          ),
+                child: BouncingScaleTap(
+                  onTap: () => widget.onNavigateTab?.call(2),
+                  child: Row(
+                    children: [
+                      Container(
+                        height: 44,
+                        width: 44,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFEE2E2),
+                          shape: BoxShape.circle,
                         ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Pickups',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
-                          ),
+                        child: const Icon(
+                          Icons.home_outlined,
+                          color: Color(0xFFEF4444),
+                          size: 23,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnimatedCounter(
+                            value: _dashboardData.pickupsToday,
+                            style: const TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFDC2626),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Pickups',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        // "No delays today" green status pill
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDFBF3),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFD1FAE5), width: 1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                height: 12,
-                width: 12,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF16A34A),
-                  shape: BoxShape.circle,
+        // "No delays today" green status pill with pulsing indicator
+        BouncingScaleTap(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: const Color(0xFF16A34A),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                    SizedBox(width: 10),
+                    Text('Fleet dispatch is running 100% on schedule!'),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _dashboardData.delayStatus,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF16A34A),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEDFBF3),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFD1FAE5), width: 1),
+            ),
+            child: Row(
+              children: [
+                const PulsingGlowBadge(
+                  color: Color(0xFF16A34A),
+                  size: 9,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _dashboardData.delayStatus,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF16A34A),
+                    ),
                   ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF16A34A),
-                size: 20,
-              ),
-            ],
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -555,7 +618,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             children: [
               for (int i = 0; i < _dashboardData.recentActivities.length; i++) ...[
-                _buildActivityTile(_dashboardData.recentActivities[i]),
+                StaggeredSlideFade(
+                  index: i,
+                  child: _buildActivityTile(_dashboardData.recentActivities[i]),
+                ),
                 if (i < _dashboardData.recentActivities.length - 1)
                   const Divider(
                     height: 1,
@@ -595,55 +661,61 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         break;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            height: 42,
-            width: 42,
-            decoration: BoxDecoration(
-              color: bgColor,
-              shape: BoxShape.circle,
+    return BouncingScaleTap(
+      onTap: () => widget.onNavigateTab?.call(2),
+      scaleDown: 0.97,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              height: 42,
+              width: 42,
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${item.orderId} • ${item.timeAgo}',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF64748B),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${item.orderId} • ${item.timeAgo}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: Color(0xFF94A3B8),
-            size: 20,
-          ),
-        ],
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF94A3B8),
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
+    if (!widget.showBottomNav) return const SizedBox.shrink();
+
     final navItems = [
       _NavItem(icon: Icons.grid_view_rounded, label: 'Dashboard'),
       _NavItem(icon: Icons.inventory_2_outlined, label: 'Inventory'),
@@ -673,6 +745,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               item: navItems[i],
               isSelected: _selectedNavIndex == i,
               onTap: () {
+                if (widget.onNavigateTab != null) {
+                  widget.onNavigateTab!(i);
+                  return;
+                }
                 setState(() => _selectedNavIndex = i);
                 if (i == 1) {
                   Navigator.pushReplacement(
@@ -682,13 +758,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       transitionDuration: Duration.zero,
                     ),
                   );
-                } else if (i != 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      duration: const Duration(milliseconds: 900),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      content: Text('${navItems[i].label} section coming soon!'),
+                } else if (i == 2) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) => const AdminOrdersScreen(),
+                      transitionDuration: Duration.zero,
+                    ),
+                  );
+                } else if (i == 3) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) => const AdminCustomersScreen(),
+                      transitionDuration: Duration.zero,
+                    ),
+                  );
+                } else if (i == 4) {
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) => const AdminReportsScreen(),
+                      transitionDuration: Duration.zero,
                     ),
                   );
                 }

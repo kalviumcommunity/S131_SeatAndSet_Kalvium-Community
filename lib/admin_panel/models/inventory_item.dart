@@ -41,6 +41,11 @@ class InventoryItem {
     }
   }
 
+  bool matchesQuery(String query) {
+    if (query.isEmpty) return true;
+    return name.toLowerCase().contains(query) || sku.toLowerCase().contains(query);
+  }
+
   /// Convert this item into a Firestore-compatible map.
   Map<String, dynamic> toMap() {
     return {

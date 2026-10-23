@@ -3,9 +3,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AdminAuthService {
   AdminAuthService({
     FirebaseAuth? auth,
-  }) : _auth = auth ?? FirebaseAuth.instance;
+  }) : _customAuth = auth;
 
-  final FirebaseAuth _auth;
+  final FirebaseAuth? _customAuth;
+
+  FirebaseAuth? get _auth {
+    if (_customAuth != null) return _customAuth;
+    try {
+      return FirebaseAuth.instance;
+    } catch (_) {
+      return null;
+    }
+  }
 
   static bool hasAdminClaim(Map<String, dynamic>? claims) {
     return claims?['admin'] == true;
@@ -13,7 +22,7 @@ class AdminAuthService {
 
   User? get currentAdmin {
     try {
-      return _auth.currentUser;
+      return _auth?.currentUser;
     } catch (_) {
       return null;
     }
@@ -21,7 +30,7 @@ class AdminAuthService {
 
   Stream<User?> get authStateChanges {
     try {
-      return _auth.authStateChanges();
+      return _auth?.authStateChanges() ?? const Stream.empty();
     } catch (_) {
       return const Stream.empty();
     }
@@ -33,7 +42,12 @@ class AdminAuthService {
     required String password,
   }) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
+      final auth = _auth;
+      if (auth == null) {
+        return 'Authentication service is not initialized.';
+      }
+
+      final credential = await auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
@@ -42,7 +56,7 @@ class AdminAuthService {
       final token = await user?.getIdTokenResult(true);
 
       if (user == null || !hasAdminClaim(token?.claims)) {
-        await _auth.signOut();
+        await _auth?.signOut();
         return 'This account is not authorized for the admin dashboard.';
       }
 
@@ -69,7 +83,11 @@ class AdminAuthService {
   /// Send password reset email
   Future<String?> sendPasswordReset(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email.trim());
+      final auth = _auth;
+      if (auth == null) {
+        return 'Authentication service is not initialized.';
+      }
+      await auth.sendPasswordResetEmail(email: email.trim());
       return null;
     } on FirebaseAuthException catch (e) {
       return _mapAuthError(e);
@@ -81,7 +99,7 @@ class AdminAuthService {
   /// Sign out
   Future<void> signOut() async {
     try {
-      await _auth.signOut();
+      await _auth?.signOut();
     } catch (_) {}
   }
 
