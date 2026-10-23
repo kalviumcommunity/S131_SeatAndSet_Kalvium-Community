@@ -89,7 +89,28 @@ void main() {
     },
   );
 
+  test('rejects pickup before the booking is delivered', () async {
+    expect(
+      () => service.createDelivery(makeDelivery(DeliveryType.pickup)),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('rejects delivery for a cancelled booking', () async {
+    await firestore.collection('bookings').doc('booking1').update({
+      'status': BookingStatus.cancelled.name,
+    });
+
+    expect(
+      () => service.createDelivery(makeDelivery(DeliveryType.delivery)),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test('pickup completion is repeatable and does not mark returned', () async {
+    await firestore.collection('bookings').doc('booking1').update({
+      'status': BookingStatus.delivered.name,
+    });
     final id = await service.createDelivery(makeDelivery(DeliveryType.pickup));
 
     await service.completePickup(id);
@@ -108,6 +129,9 @@ void main() {
   });
 
   test('return completion releases furniture', () async {
+    await firestore.collection('bookings').doc('booking1').update({
+      'status': BookingStatus.delivered.name,
+    });
     final id = await service.createDelivery(makeDelivery(DeliveryType.pickup));
     await service.completePickup(id);
     await service.completeReturn(id);

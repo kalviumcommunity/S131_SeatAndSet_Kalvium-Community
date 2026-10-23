@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/dashboard_mock_data.dart';
+import '../models/inventory_item.dart';
 import '../services/admin_auth_service.dart';
+import '../services/inventory_service.dart';
 import 'admin_login_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_orders_screen.dart';
@@ -12,11 +14,13 @@ import '../widgets/admin_animations.dart';
 class AdminDashboardScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<int>? onNavigateTab;
+  final InventoryService? inventoryService;
 
   const AdminDashboardScreen({
     super.key,
     this.showBottomNav = true,
     this.onNavigateTab,
+    this.inventoryService,
   });
 
   @override
@@ -26,7 +30,9 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedNavIndex = 0;
   final DashboardData _dashboardData = DashboardData.mock();
-  final AdminAuthService _authService = AdminAuthService();
+  late final InventoryService _inventoryService =
+      widget.inventoryService ?? InventoryService();
+  AdminAuthService? _authService;
 
   void _handleSignOut() async {
     final confirm = await showDialog<bool>(
@@ -61,7 +67,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
 
     if (confirm == true) {
-      await _authService.signOut();
+      await (_authService ??= AdminAuthService()).signOut();
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
@@ -106,7 +112,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 20),
 
                     // 4 KPI Summary Cards Row
-                    _buildKpiRow(),
+                    _buildInventoryKpiSection(),
                     const SizedBox(height: 24),
 
                     // "Today" Section
@@ -220,12 +226,83 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildKpiRow() {
+  Widget _buildInventoryKpiSection() {
+    return StreamBuilder<List<InventoryItem>>(
+      stream: _inventoryService.watchFurniture(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return Column(
+            children: [
+              _buildKpiRow(),
+              _buildInventoryState('Loading inventory...'),
+            ],
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Column(
+            children: [
+              _buildKpiRow(),
+              _buildInventoryState(
+                'Inventory metrics are unavailable. Check your connection.',
+                isError: true,
+              ),
+            ],
+          );
+        }
+
+        final items = snapshot.data ?? <InventoryItem>[];
+        return Column(
+          children: [
+            _buildKpiRow(items),
+            if (items.isEmpty)
+              _buildInventoryState('No inventory has been added yet.'),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildInventoryState(String message, {bool isError = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Icon(
+            isError ? Icons.cloud_off_outlined : Icons.inventory_2_outlined,
+            size: 16,
+            color: isError ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12,
+                color: isError
+                    ? const Color(0xFFDC2626)
+                    : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiRow([List<InventoryItem>? items]) {
+    dynamic countFor(InventoryStatus? status) {
+      if (items == null) return '—';
+      if (status == null) return items.length;
+      return items.where((item) => item.status == status).length;
+    }
+
     return Row(
       children: [
         _buildKpiCard(
           index: 0,
-          value: _dashboardData.totalItems,
+          value: countFor(null),
           label: 'Total Items',
           countColor: const Color(0xFF3730A3),
           onTap: () => widget.onNavigateTab?.call(1),
@@ -233,7 +310,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const SizedBox(width: 10),
         _buildKpiCard(
           index: 1,
-          value: _dashboardData.rented,
+          value: countFor(InventoryStatus.rented),
           label: 'Rented',
           countColor: const Color(0xFF16A34A),
           onTap: () => widget.onNavigateTab?.call(1),
@@ -241,7 +318,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const SizedBox(width: 10),
         _buildKpiCard(
           index: 2,
-          value: _dashboardData.available,
+          value: countFor(InventoryStatus.available),
           label: 'Available',
           countColor: const Color(0xFF2563EB),
           onTap: () => widget.onNavigateTab?.call(1),
@@ -249,7 +326,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const SizedBox(width: 10),
         _buildKpiCard(
           index: 3,
-          value: _dashboardData.inTransit,
+          value: countFor(InventoryStatus.inTransit),
           label: 'In Transit',
           countColor: const Color(0xFFDC2626),
           onTap: () => widget.onNavigateTab?.call(1),
@@ -260,7 +337,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildKpiCard({
     required int index,
-    required num value,
+    required dynamic value,
     required String label,
     required Color countColor,
     required VoidCallback onTap,
@@ -272,6 +349,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onTap: onTap,
           scaleDown: 0.94,
           child: Container(
+            key: ValueKey(label),
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -287,15 +365,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AnimatedCounter(
-                  value: value,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: countColor,
-                    letterSpacing: -0.5,
+                if (value is num)
+                  AnimatedCounter(
+                    value: value,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: countColor,
+                      letterSpacing: -0.5,
+                    ),
+                  )
+                else
+                  Text(
+                    value.toString(),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: countColor,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 5),
                 Text(
                   label,
@@ -319,7 +408,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Today',
+          'Today (placeholder)',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -506,7 +595,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Recent Activity',
+          'Recent Activity (placeholder)',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,

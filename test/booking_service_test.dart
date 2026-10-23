@@ -80,6 +80,20 @@ void main() {
       expect(id, isNotEmpty);
     });
 
+    test('rejects overlapping legacy bookings without a reservation lock',
+        () async {
+      await firestore.collection('bookings').add({
+        ...makeBooking().toMap(),
+        'createdAt': DateTime(2026, 10, 1),
+        'updatedAt': DateTime(2026, 10, 1),
+      });
+
+      expect(
+        () => service.createBooking(makeBooking()),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('does not report a conflict for cancelled bookings', () async {
       await service.createBooking(makeBooking(status: BookingStatus.cancelled));
 
@@ -96,6 +110,34 @@ void main() {
       final updated = await service.getBookingById(id);
 
       expect(updated!.status, BookingStatus.cancelled);
+    });
+
+    test('removes cancelled booking from the reservation lock', () async {
+      final id = await service.createBooking(makeBooking());
+
+      await service.updateBookingStatus(id, BookingStatus.cancelled);
+
+      final lock = await firestore
+          .collection('furniture_booking_locks')
+          .doc('sofa1')
+          .get();
+      expect(lock.data()?['reservations'], isEmpty);
+    });
+
+    test('rejects activating a booking that overlaps another active booking',
+        () async {
+      final secondId = await service.createBooking(
+        makeBooking(
+          status: BookingStatus.cancelled,
+        ),
+      );
+
+      await service.createBooking(makeBooking());
+
+      expect(
+        () => service.updateBookingStatus(secondId, BookingStatus.reserved),
+        throwsA(isA<StateError>()),
+      );
     });
 
     test('deletes a booking', () async {

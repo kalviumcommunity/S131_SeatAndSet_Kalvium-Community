@@ -9,7 +9,12 @@ import 'admin_signup_screen.dart';
 import 'admin_shell_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
-  const AdminLoginScreen({super.key});
+  final AdminAuthService? authService;
+
+  const AdminLoginScreen({
+    super.key,
+    this.authService,
+  });
 
   @override
   State<AdminLoginScreen> createState() => _AdminLoginScreenState();
@@ -19,7 +24,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AdminAuthService();
+  late final _authService = widget.authService ?? AdminAuthService();
 
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -75,16 +80,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               const SizedBox(width: 10),
               Expanded(child: Text(error)),
             ],
-          ),
-          action: SnackBarAction(
-            label: 'Open Mock',
-            textColor: Colors.amberAccent,
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminShellScreen()),
-              );
-            },
           ),
         ),
       );
