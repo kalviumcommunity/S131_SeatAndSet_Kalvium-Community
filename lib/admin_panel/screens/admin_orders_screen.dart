@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/delivery.dart';
 import '../models/order_delivery_item.dart';
+import '../services/delivery_service.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_customers_screen.dart';
@@ -11,11 +13,13 @@ import '../widgets/admin_animations.dart';
 class AdminOrdersScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<int>? onNavigateTab;
+  final DeliveryService? deliveryService;
 
   const AdminOrdersScreen({
     super.key,
     this.showBottomNav = true,
     this.onNavigateTab,
+    this.deliveryService,
   });
 
   @override
@@ -24,16 +28,47 @@ class AdminOrdersScreen extends StatefulWidget {
 
 class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   OrderTab _selectedTab = OrderTab.today;
-  late List<OrderDeliveryItem> _orders;
+  late final DeliveryService _deliveryService =
+      widget.deliveryService ?? DeliveryService();
+  late List<OrderDeliveryItem> _mockOrders;
 
   @override
   void initState() {
     super.initState();
-    _orders = OrderDeliveryItem.getMockOrders();
+    _mockOrders = OrderDeliveryItem.getMockOrders();
   }
 
-  List<OrderDeliveryItem> get _filteredOrders {
-    return _orders.where((item) => item.tab == _selectedTab).toList();
+  OrderDeliveryItem _mapDeliveryToOrderItem(Delivery delivery) {
+    final now = DateTime.now();
+    final isToday = delivery.scheduledAt.year == now.year &&
+        delivery.scheduledAt.month == now.month &&
+        delivery.scheduledAt.day == now.day;
+    final isCompleted = delivery.status == DeliveryStatus.completed;
+
+    OrderTab tab = OrderTab.upcoming;
+    if (isCompleted) {
+      tab = OrderTab.completed;
+    } else if (isToday) {
+      tab = OrderTab.today;
+    }
+
+    final formattedTime =
+        '${delivery.scheduledAt.hour.toString().padLeft(2, '0')}:${delivery.scheduledAt.minute.toString().padLeft(2, '0')}';
+
+    return OrderDeliveryItem(
+      id: delivery.id,
+      type: delivery.type == DeliveryType.delivery
+          ? OrderDeliveryType.deliver
+          : OrderDeliveryType.pickup,
+      furnitureName: 'Furniture ID: ${delivery.furnitureId}',
+      customerName: 'Customer ID: ${delivery.customerId}',
+      time: formattedTime,
+      tab: tab,
+      address: delivery.notes ?? 'Standard Delivery Address',
+      phoneNumber: 'N/A',
+      status: delivery.status.name,
+      notes: delivery.notes,
+    );
   }
 
   void _showNavigationDialog(OrderDeliveryItem item) {
@@ -380,8 +415,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredOrders;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -419,30 +452,52 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
               // Delivery & Pickup Cards List
               Expanded(
-                child: filtered.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        color: const Color(0xFF5D5FEF),
-                        backgroundColor: Colors.white,
-                        onRefresh: () async {
-                          HapticFeedback.lightImpact();
-                          await Future<void>.delayed(const Duration(milliseconds: 500));
-                          if (mounted) setState(() {});
-                        },
-                        child: ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            return StaggeredSlideFade(
-                              index: index,
-                              child: _buildOrderCard(filtered[index]),
-                            );
-                          },
+                child: StreamBuilder<List<Delivery>>(
+                  stream: _deliveryService.watchAllDeliveries(),
+                  builder: (context, snapshot) {
+                    List<OrderDeliveryItem> items = [];
+
+                    if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                      items = snapshot.data!
+                          .map(_mapDeliveryToOrderItem)
+                          .toList();
+                    } else {
+                      items = _mockOrders;
+                    }
+
+                    final filtered = items
+                        .where((item) => item.tab == _selectedTab)
+                        .toList();
+
+                    if (filtered.isEmpty) {
+                      return _buildEmptyState();
+                    }
+
+                    return RefreshIndicator(
+                      color: const Color(0xFF5D5FEF),
+                      backgroundColor: Colors.white,
+                      onRefresh: () async {
+                        HapticFeedback.lightImpact();
+                        await Future<void>.delayed(
+                            const Duration(milliseconds: 500));
+                        if (mounted) setState(() {});
+                      },
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
                         ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          return StaggeredSlideFade(
+                            index: index,
+                            child: _buildOrderCard(filtered[index]),
+                          );
+                        },
                       ),
+                    );
+                  },
+                ),
               ),
 
               // Bottom Navigation Bar with Orders selected

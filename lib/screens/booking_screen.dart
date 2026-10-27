@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../admin_panel/models/booking.dart' as admin_booking;
+import '../admin_panel/services/booking_service.dart' as admin_service;
 import '../data/bookings_controller.dart';
+import '../data/user_session.dart';
 import '../models/booking.dart';
 import '../models/furniture.dart';
 import '../theme/app_colors.dart';
@@ -150,29 +153,70 @@ class _BookingScreenState extends State<BookingScreen> {
     if (picked != null) setState(() => _addressIndex = picked);
   }
 
-  void _confirmBooking() {
+  Future<void> _confirmBooking() async {
     final _DemoAddress address = _addresses[_addressIndex];
-    BookingsController.instance.add(
-      Booking(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        item: widget.item,
-        quantity: widget.quantity,
-        startDate: _startDate,
-        endDate: _endDate,
-        addressLabel: address.label,
-        addressDetail: address.detail,
-        rent: _rent,
-        deliveryCharge: _deliveryCharge,
-        total: _total,
-        bookedAt: DateTime.now(),
-      ),
+    final uid = UserSession.instance.currentUid;
+
+    if (uid == null || uid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to place a booking.')),
+      );
+      return;
+    }
+
+    final newBooking = admin_booking.Booking(
+      id: '',
+      customerId: uid,
+      furnitureId: widget.item.id,
+      startDate: _startDate,
+      endDate: _endDate,
+      status: admin_booking.BookingStatus.reserved,
     );
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Booking confirmed!')),
-    );
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const OrdersScreen()),
-    );
+
+    try {
+      final bookingService = admin_service.BookingService();
+      final hasConflict = await bookingService.hasBookingConflict(newBooking);
+      if (hasConflict) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This furniture is already reserved for those dates.'),
+          ),
+        );
+        return;
+      }
+
+      final docId = await bookingService.createBooking(newBooking);
+
+      BookingsController.instance.add(
+        Booking(
+          id: docId,
+          item: widget.item,
+          quantity: widget.quantity,
+          startDate: _startDate,
+          endDate: _endDate,
+          addressLabel: address.label,
+          addressDetail: address.detail,
+          rent: _rent,
+          deliveryCharge: _deliveryCharge,
+          total: _total,
+          bookedAt: DateTime.now(),
+        ),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking confirmed!')),
+      );
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const OrdersScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Booking failed: $e')),
+      );
+    }
   }
 
   @override

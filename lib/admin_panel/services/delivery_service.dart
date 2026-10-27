@@ -5,19 +5,27 @@ import '../models/delivery.dart';
 import '../models/inventory_item.dart';
 
 class DeliveryService {
-  DeliveryService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  DeliveryService({this.firestore});
 
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? firestore;
+
+  FirebaseFirestore get _effectiveFirestore {
+    if (firestore != null) return firestore!;
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      throw StateError('Firebase is not initialized.');
+    }
+  }
 
   CollectionReference<Map<String, dynamic>> get _deliveriesCollection =>
-      _firestore.collection('deliveries');
+      _effectiveFirestore.collection('deliveries');
 
   CollectionReference<Map<String, dynamic>> get _bookingsCollection =>
-      _firestore.collection('bookings');
+      _effectiveFirestore.collection('bookings');
 
   CollectionReference<Map<String, dynamic>> get _furnitureCollection =>
-      _firestore.collection('furniture');
+      _effectiveFirestore.collection('furniture');
 
   // ---------------------------------------------------------------------------
   // Validation helpers
@@ -48,7 +56,7 @@ class DeliveryService {
     final bookingReference = _bookingsCollection.doc(bookingId);
     final furnitureReference = _furnitureCollection.doc(furnitureId);
 
-    await _firestore.runTransaction<void>((transaction) async {
+    await _effectiveFirestore.runTransaction<void>((transaction) async {
       final bookingSnapshot = await transaction.get(bookingReference);
       final furnitureSnapshot = await transaction.get(furnitureReference);
 
@@ -109,11 +117,19 @@ class DeliveryService {
   }
 
   Stream<List<Delivery>> watchAllDeliveries() {
-    return _deliveriesCollection.snapshots().map(
-      (snapshot) => snapshot.docs
-          .map((doc) => Delivery.fromMap(doc.id, doc.data()))
-          .toList(),
-    );
+    try {
+      return _deliveriesCollection.snapshots().map(
+        (snapshot) => snapshot.docs
+            .map((doc) => Delivery.fromMap(doc.id, doc.data()))
+            .toList(),
+      );
+    } on StateError catch (e, st) {
+      // Firebase not yet initialized — surface as a stream error so that
+      // StreamBuilder widgets can handle it gracefully without crashing the
+      // widget tree. Operational Firestore errors are not silenced here;
+      // they are emitted as stream errors by the underlying snapshot stream.
+      return Stream.error(e, st);
+    }
   }
 
   Future<Delivery?> getDeliveryById(String deliveryId) async {
@@ -262,7 +278,7 @@ class DeliveryService {
       return;
     }
 
-    await _firestore.runTransaction<void>((transaction) async {
+    await _effectiveFirestore.runTransaction<void>((transaction) async {
       final reference = _deliveriesCollection.doc(id);
       final snapshot = await transaction.get(reference);
 
@@ -292,7 +308,7 @@ class DeliveryService {
     DeliveryType expectedType,
   ) async {
     final id = _validateId(deliveryId, 'Delivery ID');
-    await _firestore.runTransaction<void>((transaction) async {
+    await _effectiveFirestore.runTransaction<void>((transaction) async {
       final deliveryReference = _deliveriesCollection.doc(id);
       final deliverySnapshot = await transaction.get(deliveryReference);
       if (!deliverySnapshot.exists || deliverySnapshot.data() == null) {
@@ -369,7 +385,7 @@ class DeliveryService {
   /// Marks a completed pickup as returned and releases the furniture.
   Future<void> completeReturn(String deliveryId) async {
     final id = _validateId(deliveryId, 'Delivery ID');
-    await _firestore.runTransaction<void>((transaction) async {
+    await _effectiveFirestore.runTransaction<void>((transaction) async {
       final deliveryReference = _deliveriesCollection.doc(id);
       final deliverySnapshot = await transaction.get(deliveryReference);
       if (!deliverySnapshot.exists || deliverySnapshot.data() == null) {

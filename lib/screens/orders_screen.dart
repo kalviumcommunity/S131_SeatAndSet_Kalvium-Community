@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../admin_panel/models/booking.dart' as admin_booking;
+import '../admin_panel/services/booking_service.dart' as admin_service;
 import '../data/bookings_controller.dart';
+import '../data/user_session.dart';
 import '../models/booking.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
@@ -81,7 +84,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Cancel booking?'),
-        content: Text('This will cancel your booking for ${booking.item.name}.'),
+        content:
+            Text('This will cancel your booking for ${booking.item.name}.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -89,12 +93,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Cancel booking', style: TextStyle(color: AppColors.danger)),
+            child: const Text('Cancel booking',
+                style: TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
     );
     if (confirmed == true) {
+      try {
+        await admin_service.BookingService().updateBookingStatus(
+          booking.id,
+          admin_booking.BookingStatus.cancelled,
+        );
+      } catch (_) {}
       BookingsController.instance.remove(booking.id);
       if (!mounted) return;
       _placeholder('Booking cancelled');
@@ -103,6 +114,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUid = UserSession.instance.currentUid ?? '';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -125,12 +138,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: ValueListenableBuilder<List<Booking>>(
-                  valueListenable: BookingsController.instance.bookings,
-                  builder: (context, allBookings, _) {
+                child: StreamBuilder<List<Booking>>(
+                  stream: BookingsController.instance.watchCustomerBookings(
+                    customerId: currentUid,
+                  ),
+                  builder: (context, snapshot) {
+                    final allBookings =
+                        snapshot.data ?? BookingsController.instance.bookings.value;
                     final List<Booking> bookings = _filter(allBookings);
                     if (bookings.isEmpty) {
-                      return _EmptyState(tab: _tab, hasAny: allBookings.isNotEmpty);
+                      return _EmptyState(
+                          tab: _tab, hasAny: allBookings.isNotEmpty);
                     }
                     return ListView.separated(
                       padding: const EdgeInsets.only(bottom: AppSpacing.lg),

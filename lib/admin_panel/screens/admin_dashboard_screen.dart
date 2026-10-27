@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/dashboard_mock_data.dart';
+import '../models/delivery.dart';
 import '../models/inventory_item.dart';
 import '../services/admin_auth_service.dart';
+import '../services/delivery_service.dart';
 import '../services/inventory_service.dart';
 import 'admin_login_screen.dart';
 import 'admin_inventory_screen.dart';
@@ -15,12 +16,14 @@ class AdminDashboardScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<int>? onNavigateTab;
   final InventoryService? inventoryService;
+  final DeliveryService? deliveryService;
 
   const AdminDashboardScreen({
     super.key,
     this.showBottomNav = true,
     this.onNavigateTab,
     this.inventoryService,
+    this.deliveryService,
   });
 
   @override
@@ -29,9 +32,10 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedNavIndex = 0;
-  final DashboardData _dashboardData = DashboardData.mock();
   late final InventoryService _inventoryService =
       widget.inventoryService ?? InventoryService();
+  late final DeliveryService _deliveryService =
+      widget.deliveryService ?? DeliveryService();
   AdminAuthService? _authService;
 
   void _handleSignOut() async {
@@ -136,6 +140,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildHeader() {
+    final now = DateTime.now();
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final dateLabel =
+        '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -154,7 +167,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 3),
             Text(
-              _dashboardData.currentDateFormatted,
+              dateLabel,
               style: const TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w500,
@@ -404,262 +417,382 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildTodaySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Today (placeholder)',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Deliveries & Pickups combined card
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x080F172A),
-                blurRadius: 10,
-                offset: Offset(0, 3),
+    return StreamBuilder<List<Delivery>>(
+      stream: _deliveryService.watchAllDeliveries(),
+      builder: (context, snapshot) {
+        final deliveries = snapshot.data ?? [];
+        final today = DateTime.now();
+        final todayDeliveries = deliveries.where((d) {
+          final isToday = d.scheduledAt.year == today.year &&
+              d.scheduledAt.month == today.month &&
+              d.scheduledAt.day == today.day;
+          return isToday &&
+              d.type == DeliveryType.delivery &&
+              d.status != DeliveryStatus.cancelled;
+        }).length;
+        final todayPickups = deliveries.where((d) {
+          final isToday = d.scheduledAt.year == today.year &&
+              d.scheduledAt.month == today.month &&
+              d.scheduledAt.day == today.day;
+          return isToday &&
+              d.type == DeliveryType.pickup &&
+              d.status != DeliveryStatus.cancelled;
+        }).length;
+
+        final hasDelays = deliveries.any((d) {
+          final isToday = d.scheduledAt.year == today.year &&
+              d.scheduledAt.month == today.month &&
+              d.scheduledAt.day == today.day;
+          return isToday && d.status == DeliveryStatus.delayed;
+        });
+
+        final delayStatus =
+            hasDelays ? 'Some deliveries are delayed today' : 'No delays today';
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Today',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Left: Deliveries (Tappable -> switch to Orders tab)
-              Expanded(
-                child: BouncingScaleTap(
-                  onTap: () => widget.onNavigateTab?.call(2),
-                  child: Row(
-                    children: [
-                      Container(
-                        height: 44,
-                        width: 44,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEEF2FF),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.local_shipping_outlined,
-                          color: Color(0xFF6366F1),
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x080F172A),
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: BouncingScaleTap(
+                      onTap: () => widget.onNavigateTab?.call(2),
+                      child: Row(
                         children: [
-                          AnimatedCounter(
-                            value: _dashboardData.deliveriesToday,
-                            style: const TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF4F46E5),
+                          Container(
+                            height: 44, width: 44,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEEF2FF),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.local_shipping_outlined,
+                              color: Color(0xFF6366F1), size: 22,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Deliveries',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF64748B),
-                            ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AnimatedCounter(
+                                value: todayDeliveries,
+                                style: const TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF4F46E5),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Deliveries',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              // Vertical Divider
-              Container(
-                height: 40,
-                width: 1,
-                color: const Color(0xFFF1F5F9),
-              ),
-              const SizedBox(width: 16),
-              // Right: Pickups (Tappable -> switch to Orders tab)
-              Expanded(
-                child: BouncingScaleTap(
-                  onTap: () => widget.onNavigateTab?.call(2),
-                  child: Row(
-                    children: [
-                      Container(
-                        height: 44,
-                        width: 44,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFEE2E2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.home_outlined,
-                          color: Color(0xFFEF4444),
-                          size: 23,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  Container(height: 40, width: 1, color: const Color(0xFFF1F5F9)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: BouncingScaleTap(
+                      onTap: () => widget.onNavigateTab?.call(2),
+                      child: Row(
                         children: [
-                          AnimatedCounter(
-                            value: _dashboardData.pickupsToday,
-                            style: const TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFFDC2626),
+                          Container(
+                            height: 44, width: 44,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFEE2E2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.home_outlined,
+                              color: Color(0xFFEF4444), size: 23,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Pickups',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF64748B),
-                            ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AnimatedCounter(
+                                value: todayPickups,
+                                style: const TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Pickups',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            BouncingScaleTap(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: hasDelays
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF16A34A),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    content: Row(
+                      children: [
+                        Icon(
+                          hasDelays
+                              ? Icons.warning_amber_rounded
+                              : Icons.check_circle_outline,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(hasDelays
+                            ? 'Some deliveries are running late.'
+                            : 'Fleet dispatch is running 100% on schedule!'),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                decoration: BoxDecoration(
+                  color:
+                      hasDelays ? const Color(0xFFFEF2F2) : const Color(0xFFEDFBF3),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: hasDelays
+                        ? const Color(0xFFFECACA)
+                        : const Color(0xFFD1FAE5),
+                    width: 1,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        // "No delays today" green status pill with pulsing indicator
-        BouncingScaleTap(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                backgroundColor: const Color(0xFF16A34A),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                content: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
-                    SizedBox(width: 10),
-                    Text('Fleet dispatch is running 100% on schedule!'),
+                    PulsingGlowBadge(
+                      color: hasDelays
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF16A34A),
+                      size: 9,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        delayStatus,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: hasDelays
+                              ? const Color(0xFFDC2626)
+                              : const Color(0xFF16A34A),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: hasDelays
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF16A34A),
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEDFBF3),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD1FAE5), width: 1),
             ),
-            child: Row(
-              children: [
-                const PulsingGlowBadge(
-                  color: Color(0xFF16A34A),
-                  size: 9,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _dashboardData.delayStatus,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF16A34A),
-                    ),
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF16A34A),
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
   Widget _buildRecentActivitySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recent Activity (placeholder)',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x080F172A),
-                blurRadius: 10,
-                offset: Offset(0, 3),
+    return StreamBuilder<List<Delivery>>(
+      stream: _deliveryService.watchAllDeliveries(),
+      builder: (context, snapshot) {
+        // Show skeleton while loading
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Recent Activity',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF4F46E5)),
+                ),
               ),
             ],
-          ),
-          child: Column(
-            children: [
-              for (int i = 0; i < _dashboardData.recentActivities.length; i++) ...[
-                StaggeredSlideFade(
-                  index: i,
-                  child: _buildActivityTile(_dashboardData.recentActivities[i]),
+          );
+        }
+
+        final deliveries = snapshot.data ?? [];
+
+        // Sort by scheduledAt descending, take most recent 5
+        final recent = [...deliveries]
+          ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+        final items = recent.take(5).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Recent Activity',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (items.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x080F172A),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
-                if (i < _dashboardData.recentActivities.length - 1)
-                  const Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Color(0xFFF8FAFC),
-                    indent: 68,
-                    endIndent: 16,
-                  ),
-              ],
-            ],
-          ),
-        ),
-      ],
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.inbox_outlined, size: 22, color: Color(0xFF94A3B8)),
+                    SizedBox(width: 10),
+                    Text(
+                      'No recent deliveries or pickups',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x080F172A),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    for (int i = 0; i < items.length; i++) ...[
+                      StaggeredSlideFade(
+                        index: i,
+                        child: _buildDeliveryActivityTile(items[i]),
+                      ),
+                      if (i < items.length - 1)
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Color(0xFFF8FAFC),
+                          indent: 68,
+                          endIndent: 16,
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildActivityTile(ActivityItem item) {
-    IconData icon;
-    Color iconColor;
-    Color bgColor;
+  Widget _buildDeliveryActivityTile(Delivery delivery) {
+    final isDelivery = delivery.type == DeliveryType.delivery;
+    final icon = isDelivery
+        ? Icons.local_shipping_outlined
+        : Icons.home_outlined;
+    final iconColor =
+        isDelivery ? const Color(0xFF6366F1) : const Color(0xFF16A34A);
+    final bgColor =
+        isDelivery ? const Color(0xFFEEF2FF) : const Color(0xFFDCFCE7);
 
-    switch (item.type) {
-      case ActivityType.delivery:
-        icon = Icons.local_shipping_outlined;
-        iconColor = const Color(0xFF6366F1);
-        bgColor = const Color(0xFFEEF2FF);
-        break;
-      case ActivityType.pickup:
-        icon = Icons.shopping_cart_outlined;
-        iconColor = const Color(0xFF16A34A);
-        bgColor = const Color(0xFFDCFCE7);
-        break;
-      case ActivityType.booking:
-        icon = Icons.description_outlined;
-        iconColor = const Color(0xFF2563EB);
-        bgColor = const Color(0xFFDBEAFE);
-        break;
+    final now = DateTime.now();
+    final diff = now.difference(delivery.scheduledAt);
+    String timeAgo;
+    if (diff.inMinutes < 60) {
+      timeAgo = '${diff.inMinutes} min ago';
+    } else if (diff.inHours < 24) {
+      timeAgo = '${diff.inHours}h ago';
+    } else {
+      timeAgo = '${diff.inDays}d ago';
     }
+    if (delivery.scheduledAt.isAfter(now)) {
+      timeAgo = 'Upcoming';
+    }
+
+    final label =
+        isDelivery ? 'Delivery scheduled' : 'Pickup scheduled';
 
     return BouncingScaleTap(
       onTap: () => widget.onNavigateTab?.call(2),
@@ -671,10 +804,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Container(
               height: 42,
               width: 42,
-              decoration: BoxDecoration(
-                color: bgColor,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
               child: Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 14),
@@ -683,7 +813,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.title,
+                    label,
                     style: const TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
@@ -692,7 +822,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${item.orderId} • ${item.timeAgo}',
+                    '#${delivery.id.substring(0, delivery.id.length.clamp(0, 8))} • $timeAgo',
                     style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w400,

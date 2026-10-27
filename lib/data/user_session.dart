@@ -1,83 +1,260 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// The signed-in demo user's profile fields.
-///
-/// Deliberately just 3 plain strings — there's no backend/account system
-/// yet, so this only needs to hold what Sign Up collects and Profile
-/// displays/edits.
 @immutable
 class UserProfile {
   const UserProfile({
     required this.name,
     required this.email,
     required this.phone,
+    this.uid,
   });
 
   final String name;
   final String email;
   final String phone;
+  final String? uid;
 
-  UserProfile copyWith({String? name, String? email, String? phone}) {
+  UserProfile copyWith({
+    String? name,
+    String? email,
+    String? phone,
+    String? uid,
+  }) {
     return UserProfile(
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      uid: uid ?? this.uid,
     );
   }
 }
 
-/// App-wide demo "auth" session — a stand-in for a real backend/account
-/// system. `SignUpScreen` writes the entered name/email/phone into this
-/// on "Create Account"; `SignInScreen` loads whatever's already here (or
-/// seeds a default demo identity, since there's no real account database
-/// to look a typed email/phone up against). Profile reads and
-/// `EditProfileScreen` writes back through the same instance, and
-/// `logout()` clears it and every screen that cares (just Profile, for
-/// now) reacts via [profile]'s `ValueNotifier`.
 class UserSession {
-  UserSession._();
+  UserSession._({FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _auth = auth,
+        _firestore = firestore {
+    _listenToAuthState();
+  }
 
   static final UserSession instance = UserSession._();
 
-  final ValueNotifier<UserProfile?> profile = ValueNotifier<UserProfile?>(null);
+  final FirebaseAuth? _auth;
+  final FirebaseFirestore? _firestore;
+
+  FirebaseAuth? get _effectiveAuth {
+    if (_auth != null) return _auth;
+    try {
+      return FirebaseAuth.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  FirebaseFirestore? get _effectiveFirestore {
+    if (_firestore != null) return _firestore;
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  final ValueNotifier<UserProfile?> profile =
+      ValueNotifier<UserProfile?>(null);
 
   bool get isSignedIn => profile.value != null;
+  String? get currentUid =>
+      profile.value?.uid ?? _effectiveAuth?.currentUser?.uid;
 
-  void signUp({
+  void _listenToAuthState() {
+    try {
+      _effectiveAuth?.authStateChanges().listen((user) async {
+        if (user == null) {
+          profile.value = null;
+        } else {
+          try {
+            await _loadCustomerProfile(user.uid, user.email ?? '');
+          } catch (_) {
+            profile.value = null;
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadCustomerProfile(String uid, String fallbackEmail) async {
+    final firestore = _effectiveFirestore;
+    if (firestore == null) {
+      throw StateError('Firestore service is not initialized.');
+    }
+
+    final doc = await firestore.collection('customers').doc(uid).get();
+    if (doc.exists && doc.data() != null) {
+      final data = doc.data()!;
+      profile.value = UserProfile(
+        name: data['name'] ?? 'Customer',
+        email: data['email'] ?? fallbackEmail,
+        phone: data['phoneNumber'] ?? '',
+        uid: uid,
+      );
+    } else {
+      // If profile doc doesn't exist yet, seed initial customer record
+      await firestore.collection('customers').doc(uid).set({
+        'name': 'Customer',
+        'email': fallbackEmail,
+        'phoneNumber': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      profile.value = UserProfile(
+        name: 'Customer',
+        email: fallbackEmail,
+        phone: '',
+        uid: uid,
+      );
+    }
+  }
+
+  Future<String?> signUp({
     required String name,
     required String email,
     required String phone,
-  }) {
-    profile.value = UserProfile(
-      name: name.trim().isEmpty ? 'Guest User' : name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-    );
+    required String password,
+  }) async {
+    final cleanEmail = email.trim();
+    final cleanName = name.trim().isEmpty ? 'Customer' : name.trim();
+    final cleanPhone = phone.trim();
+
+    final auth = _effectiveAuth;
+    if (auth == null) {
+      return 'Authentication service is not initialized.';
+    }
+
+    final firestore = _effectiveFirestore;
+    if (firestore == null) {
+      return 'Database service is not initialized.';
+    }
+
+    try {
+      final cred = await auth.createUserWithEmailAndPassword(
+        email: cleanEmail,
+        password: password,
+      );
+
+      final uid = cred.user?.uid;
+      if (uid == null) {
+        return 'Failed to obtain user account identity.';
+      }
+
+      await firestore.collection('customers').doc(uid).set({
+        'name': cleanName,
+        'email': cleanEmail,
+        'phoneNumber': cleanPhone,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      profile.value = UserProfile(
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        uid: uid,
+      );
+
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message ?? 'Sign up failed.';
+    } on FirebaseException catch (e) {
+      return e.message ?? 'Failed to save customer profile.';
+    } catch (e) {
+      return e.toString();
+    }
   }
 
-  /// Signing in doesn't look anything up against a real account
-  /// database (there isn't one) — it keeps whatever profile this demo
-  /// session already has (e.g. from a Sign Up earlier in the same app
-  /// run), or seeds a default demo identity from whatever was typed into
-  /// the "Email or Phone" field so Profile never shows a hardcoded name.
-  void signIn(String emailOrPhone) {
-    if (isSignedIn) return;
-    final String identifier = emailOrPhone.trim();
-    final bool looksLikeEmail = identifier.contains('@');
-    profile.value = UserProfile(
-      name: 'Guest User',
-      email: looksLikeEmail ? identifier : '',
-      phone: looksLikeEmail ? '' : identifier,
-    );
+  Future<String?> signIn({
+    required String email,
+    required String password,
+  }) async {
+    final cleanEmail = email.trim();
+
+    final auth = _effectiveAuth;
+    if (auth == null) {
+      return 'Authentication service is not initialized.';
+    }
+
+    try {
+      final cred = await auth.signInWithEmailAndPassword(
+        email: cleanEmail,
+        password: password,
+      );
+
+      final uid = cred.user?.uid;
+      if (uid == null) {
+        return 'Failed to verify account identity.';
+      }
+
+      await _loadCustomerProfile(uid, cleanEmail);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message ?? 'Sign in failed.';
+    } catch (e) {
+      return e.toString();
+    }
   }
 
-  void updateProfile({String? name, String? email, String? phone}) {
-    final UserProfile? current = profile.value;
-    if (current == null) return;
-    profile.value = current.copyWith(name: name, email: email, phone: phone);
+  Future<String?> updateProfile({
+    String? name,
+    String? email,
+    String? phone,
+  }) async {
+    final current = profile.value;
+    if (current == null) {
+      return 'No active customer profile.';
+    }
+
+    final newName = name?.trim() ?? current.name;
+    final newEmail = email?.trim() ?? current.email;
+    final newPhone = phone?.trim() ?? current.phone;
+
+    final uid = current.uid ?? _effectiveAuth?.currentUser?.uid;
+    if (uid == null) {
+      return 'User is not authenticated.';
+    }
+
+    final firestore = _effectiveFirestore;
+    if (firestore == null) {
+      return 'Database service is not initialized.';
+    }
+
+    try {
+      await firestore.collection('customers').doc(uid).set({
+        'name': newName,
+        'email': newEmail,
+        'phoneNumber': newPhone,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      profile.value = current.copyWith(
+        name: newName,
+        email: newEmail,
+        phone: newPhone,
+      );
+
+      return null;
+    } on FirebaseException catch (e) {
+      return e.message ?? 'Failed to persist profile updates.';
+    } catch (e) {
+      return e.toString();
+    }
   }
 
-  void logout() {
+  Future<void> logout() async {
+    try {
+      await _effectiveAuth?.signOut();
+    } catch (_) {}
     profile.value = null;
   }
 }
