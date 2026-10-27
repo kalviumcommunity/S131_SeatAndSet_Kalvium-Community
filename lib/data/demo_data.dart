@@ -1,17 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/furniture.dart';
 
-/// Local, hardcoded demo data for the customer-facing screens.
-///
-/// There is no backend/database yet — every screen that lists furniture,
-/// categories, or delivery locations reads from here. Keeping it all in
-/// one file (instead of scattering mock lists across screens) means
-/// swapping this out for a real API later only touches this file.
+/// Local demo data and Firestore stream loader for customer-facing screens.
 class DemoData {
   DemoData._();
 
-  /// Furniture categories. The first 4 (Sofas, Beds, Tables, Chairs) are
-  /// also the ones shown as tiles on the Home screen; the rest only show
-  /// up as filter chips on the Furniture List screen.
   static const List<String> categories = [
     'Sofas',
     'Beds',
@@ -21,7 +14,6 @@ class DemoData {
     'Lamps',
   ];
 
-  /// Deliverable cities/regions, shown on the location-selector screen.
   static const List<String> locations = [
     'Jammu, J&K',
     'Srinagar, J&K',
@@ -35,10 +27,6 @@ class DemoData {
     'Gurugram',
   ];
 
-  /// The demo furniture catalog. Images are reused from the Home screen's
-  /// own cropped reference artwork (there's no dedicated photo per demo
-  /// item yet) — swapping in real product photography later is just a
-  /// matter of changing `imageAsset` per row.
   static const List<Furniture> furniture = [
     Furniture(
       id: 'sofa-modern',
@@ -110,6 +98,34 @@ class DemoData {
     ),
   ];
 
+  static Stream<List<Furniture>> watchLiveFurniture({
+    FirebaseFirestore? firestore,
+  }) {
+    try {
+      FirebaseFirestore? db;
+      if (firestore != null) {
+        db = firestore;
+      } else {
+        try {
+          db = FirebaseFirestore.instance;
+        } catch (_) {
+          db = null;
+        }
+      }
+
+      if (db == null) return Stream.value(furniture);
+
+      return db.collection('furniture').snapshots().map((snapshot) {
+        if (snapshot.docs.isEmpty) return furniture;
+        return snapshot.docs
+            .map((doc) => Furniture.fromFirestore(doc))
+            .toList();
+      });
+    } catch (_) {
+      return Stream.value(furniture);
+    }
+  }
+
   /// Case-insensitive search across name and category.
   static List<Furniture> search(String query) {
     final String q = query.trim().toLowerCase();
@@ -129,9 +145,6 @@ class DemoData {
     return furniture.where((item) => item.category == category).toList();
   }
 
-  /// Combined search-text + category filter, used by the Browse/Search
-  /// screen (which offers both at once) — [search] and [byCategory]
-  /// stay as the simpler single-filter versions used elsewhere.
   static List<Furniture> filter({String? category, String query = ''}) {
     final String q = query.trim().toLowerCase();
     return furniture.where((item) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/reports_data.dart';
+import '../services/reports_service.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_orders_screen.dart';
@@ -11,11 +12,13 @@ import '../widgets/admin_animations.dart';
 class AdminReportsScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<int>? onNavigateTab;
+  final ReportsService? reportsService;
 
   const AdminReportsScreen({
     super.key,
     this.showBottomNav = true,
     this.onNavigateTab,
+    this.reportsService,
   });
 
   @override
@@ -24,20 +27,19 @@ class AdminReportsScreen extends StatefulWidget {
 
 class _AdminReportsScreenState extends State<AdminReportsScreen> {
   String _selectedTimeframe = 'This Month';
-  late ReportsData _reportsData;
   int? _selectedBarIndex;
+  late final ReportsService _reportsService =
+      widget.reportsService ?? ReportsService();
 
   @override
   void initState() {
     super.initState();
-    _reportsData = ReportsData.forTimeframe(_selectedTimeframe);
   }
 
   void _onTimeframeChanged(String timeframe) {
     if (_selectedTimeframe == timeframe) return;
     setState(() {
       _selectedTimeframe = timeframe;
-      _reportsData = ReportsData.forTimeframe(timeframe);
       _selectedBarIndex = null;
     });
   }
@@ -127,70 +129,157 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           child: Column(
             children: [
               Expanded(
-                child: RefreshIndicator(
-                  color: const Color(0xFF5D5FEF),
-                  backgroundColor: Colors.white,
-                  onRefresh: () async {
-                    HapticFeedback.lightImpact();
-                    await Future<void>.delayed(const Duration(milliseconds: 500));
-                    if (mounted) setState(() {});
+                child: StreamBuilder<ReportsData>(
+                  stream: _reportsService.watchReportsData(_selectedTimeframe),
+                  builder: (context, snapshot) {
+                    final reportsData = snapshot.data;
+
+                    return RefreshIndicator(
+                      color: const Color(0xFF5D5FEF),
+                      backgroundColor: Colors.white,
+                      onRefresh: () async {
+                        HapticFeedback.lightImpact();
+                        await Future<void>.delayed(
+                            const Duration(milliseconds: 500));
+                        if (mounted) setState(() {});
+                      },
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 12),
+                            _buildHeader(),
+                            const SizedBox(height: 16),
+
+                            // ── Loading state ────────────────────────────────
+                            if (snapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                reportsData == null)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 80),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF5D5FEF),
+                                  ),
+                                ),
+                              )
+
+                            // ── Error state ──────────────────────────────────
+                            else if (snapshot.hasError && reportsData == null)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 60, horizontal: 16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.cloud_off_outlined,
+                                        size: 48,
+                                        color: Color(0xFFDC2626)),
+                                    const SizedBox(height: 14),
+                                    const Text(
+                                      'Unable to load reports',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF334155)),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      snapshot.error.toString(),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                          fontSize: 12.5,
+                                          color: Color(0xFF94A3B8)),
+                                    ),
+                                  ],
+                                ),
+                              )
+
+                            // ── Data state ───────────────────────────────────
+                            else if (reportsData != null) ...[
+                              _buildMetricCard(
+                                value: reportsData.totalRevenue,
+                                label: 'Total Revenue',
+                                growth: reportsData.revenueGrowth,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildMetricCard(
+                                value: '${reportsData.totalRentals}',
+                                label: 'Total Rentals',
+                                growth: reportsData.rentalsGrowth,
+                              ),
+                              const SizedBox(height: 22),
+                              const Text(
+                                'Rentals Trend',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1B1D28),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              reportsData.trendPoints.isEmpty
+                                  ? _buildNoDataCard('No rentals in this period')
+                                  : _buildRentalsTrendCard(reportsData),
+                              const SizedBox(height: 22),
+                              const Text(
+                                'Top Categories',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1B1D28),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              reportsData.topCategories.isEmpty
+                                  ? _buildNoDataCard('No category data yet')
+                                  : _buildTopCategoriesCard(reportsData),
+                              const SizedBox(height: 24),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
                   },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 12),
-                      _buildHeader(),
-                      const SizedBox(height: 16),
-                      _buildMetricCard(
-                        value: _reportsData.totalRevenue,
-                        label: 'Total Revenue',
-                        growth: _reportsData.revenueGrowth,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildMetricCard(
-                        value: '${_reportsData.totalRentals}',
-                        label: 'Total Rentals',
-                        growth: _reportsData.rentalsGrowth,
-                      ),
-                      const SizedBox(height: 22),
-                      const Text(
-                        'Rentals Trend',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B1D28),
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildRentalsTrendCard(),
-                      const SizedBox(height: 22),
-                      const Text(
-                        'Top Categories',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B1D28),
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildTopCategoriesCard(),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
                 ),
-              ),
               ),
               _buildBottomNavigationBar(),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNoDataCard(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEAECEF), width: 0.8),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.bar_chart_rounded,
+              size: 36, color: Color(0xFFCBD5E1)),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: const TextStyle(
+                fontSize: 13.5,
+                color: Color(0xFF94A3B8),
+                fontWeight: FontWeight.w500),
+          ),
+        ],
       ),
     );
   }
@@ -335,8 +424,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   // ---------------------------------------------------------------------------
   // Rentals Trend Chart Card
   // ---------------------------------------------------------------------------
-  Widget _buildRentalsTrendCard() {
-    final points = _reportsData.trendPoints;
+  Widget _buildRentalsTrendCard(ReportsData reportsData) {
+    final points = reportsData.trendPoints;
     const maxVal = 60.0;
     const chartHeight = 130.0;
 
@@ -572,8 +661,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   // ---------------------------------------------------------------------------
   // Top Categories Card
   // ---------------------------------------------------------------------------
-  Widget _buildTopCategoriesCard() {
-    final categories = _reportsData.topCategories;
+  Widget _buildTopCategoriesCard(ReportsData reportsData) {
+    final categories = reportsData.topCategories;
 
     return Container(
       width: double.infinity,

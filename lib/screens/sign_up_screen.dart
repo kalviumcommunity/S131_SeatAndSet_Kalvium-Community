@@ -44,24 +44,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _agreedToTerms = true;
   bool _obscurePassword = true;
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  Future<void> _goToHome() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
 
-  void _goToHome() {
-    UserSession.instance.signUp(
-      name: _nameController.text,
-      email: _emailController.text,
-      phone: _phoneController.text,
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter email and password.'),
+        ),
+      );
+      return;
+    }
+
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms & Privacy Policy.'),
+        ),
+      );
+      return;
+    }
+
+    final error = await UserSession.instance.signUp(
+      name: name,
+      email: email,
+      phone: phone,
+      password: password,
     );
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-    );
+    if (!mounted) return;
+
+    if (error == null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
   }
 
   void _goToSignIn() {

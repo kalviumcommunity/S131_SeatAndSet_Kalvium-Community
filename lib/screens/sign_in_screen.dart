@@ -52,18 +52,34 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _rememberMe = true;
   bool _obscurePassword = true;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  Future<void> _goToHome() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
-  void _goToHome() {
-    UserSession.instance.signIn(_emailController.text);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter email/phone and password.'),
+        ),
+      );
+      return;
+    }
+
+    final error = await UserSession.instance.signIn(
+      email: email,
+      password: password,
     );
+    if (!mounted) return;
+
+    if (error == null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
   }
 
   void _goToSignUp() {

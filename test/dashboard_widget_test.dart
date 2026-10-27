@@ -73,7 +73,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Today (placeholder)'), findsOneWidget);
-    expect(find.text('Recent Activity (placeholder)'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Recent Activity'), findsOneWidget);
   });
 }

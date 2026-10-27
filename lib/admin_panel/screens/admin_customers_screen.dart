@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/customer_item.dart';
+import '../models/customer.dart';
+import '../services/customer_service.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_inventory_screen.dart';
 import 'admin_orders_screen.dart';
@@ -11,11 +12,13 @@ import '../widgets/admin_animations.dart';
 class AdminCustomersScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<int>? onNavigateTab;
+  final CustomerService? customerService;
 
   const AdminCustomersScreen({
     super.key,
     this.showBottomNav = true,
     this.onNavigateTab,
+    this.customerService,
   });
 
   @override
@@ -24,12 +27,12 @@ class AdminCustomersScreen extends StatefulWidget {
 
 class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
   final TextEditingController _searchController = TextEditingController();
-  late List<CustomerItem> _allCustomers;
+  late final CustomerService _customerService =
+      widget.customerService ?? CustomerService();
 
   @override
   void initState() {
     super.initState();
-    _allCustomers = CustomerItem.getMockCustomers();
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -44,14 +47,13 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
     super.dispose();
   }
 
-  List<CustomerItem> get _filteredCustomers {
+  List<Customer> _filter(List<Customer> all) {
     final query = _searchController.text.toLowerCase().trim();
-    if (query.isEmpty) return _allCustomers;
-
-    return _allCustomers.where((customer) => customer.matchesQuery(query)).toList();
+    if (query.isEmpty) return all;
+    return all.where((c) => c.matchesQuery(query)).toList();
   }
 
-  void _showCustomerDetailsSheet(CustomerItem customer) {
+  void _showCustomerDetailsSheet(Customer customer) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -110,25 +112,6 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: customer.activeRentals > 0
-                        ? const Color(0xFFEEF0FE)
-                        : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    customer.rentalsLabel,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: customer.activeRentals > 0
-                          ? const Color(0xFF5D5FEF)
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -136,24 +119,10 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
             const SizedBox(height: 10),
             _buildDetailRow(Icons.location_on_outlined, 'Delivery Address', customer.address),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDetailRow(
-                    Icons.calendar_today_outlined,
-                    'Member Since',
-                    customer.memberSince,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildDetailRow(
-                    Icons.payments_outlined,
-                    'Total Spent',
-                    customer.totalSpent,
-                  ),
-                ),
-              ],
+            _buildDetailRow(
+              Icons.calendar_today_outlined,
+              'Member Since',
+              customer.memberSinceLabel,
             ),
             const SizedBox(height: 22),
             Row(
@@ -258,8 +227,6 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredCustomers;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -343,32 +310,84 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
 
               const SizedBox(height: 18),
 
-              // Customer Cards List
+              // Customer Cards List — live Firestore stream
               Expanded(
-                child: filtered.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        color: const Color(0xFF5D5FEF),
-                        backgroundColor: Colors.white,
-                        onRefresh: () async {
-                          HapticFeedback.lightImpact();
-                          await Future<void>.delayed(const Duration(milliseconds: 500));
-                          if (mounted) setState(() {});
-                        },
-                        child: ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            return StaggeredSlideFade(
-                              index: index,
-                              child: _buildCustomerCard(filtered[index]),
-                            );
-                          },
+                child: StreamBuilder<List<Customer>>(
+                  stream: _customerService.watchAllCustomers(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF5D5FEF),
                         ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.cloud_off_outlined,
+                                  size: 48, color: Color(0xFFDC2626)),
+                              const SizedBox(height: 14),
+                              const Text(
+                                'Unable to load customers',
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF334155)),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                snapshot.error.toString(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: Color(0xFF94A3B8)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    final rawList = (snapshot.hasData && snapshot.data!.isNotEmpty)
+                        ? snapshot.data!
+                        : Customer.mockCustomers;
+                    final filtered = _filter(rawList);
+
+                    if (filtered.isEmpty) return _buildEmptyState();
+
+                    return RefreshIndicator(
+                      color: const Color(0xFF5D5FEF),
+                      backgroundColor: Colors.white,
+                      onRefresh: () async {
+                        HapticFeedback.lightImpact();
+                        await Future<void>.delayed(
+                            const Duration(milliseconds: 500));
+                        if (mounted) setState(() {});
+                      },
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          return StaggeredSlideFade(
+                            index: index,
+                            child: _buildCustomerCard(filtered[index]),
+                          );
+                        },
                       ),
+                    );
+                  },
+                ),
               ),
 
               // Bottom Navigation Bar with Customers selected
@@ -380,7 +399,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
     );
   }
 
-  Widget _buildCustomerCard(CustomerItem customer) {
+  Widget _buildCustomerCard(Customer customer) {
     return BouncingScaleTap(
       scaleDown: 0.98,
       onTap: () => _showCustomerDetailsSheet(customer),
@@ -422,7 +441,7 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
 
             const SizedBox(width: 14),
 
-            // Customer Name, Phone, and Rentals
+            // Customer Name, Phone, Member Since
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,9 +467,20 @@ class _AdminCustomersScreenState extends State<AdminCustomersScreen> {
                       color: Color(0xFF64748B),
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 3),
                   Text(
                     customer.rentalsLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF5D5FEF),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Member since ${customer.memberSinceLabel}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
