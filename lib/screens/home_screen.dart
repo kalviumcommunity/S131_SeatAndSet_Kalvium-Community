@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Punjab") ellipsizes instead of overflowing the row —
                   // the default "Jammu, J&K" is short enough that this
                   // never visibly changes its layout.
-                  Flexible(
+                  Expanded(
                     child: InkWell(
                       onTap: _pickLocation,
                       child: Column(
@@ -174,7 +174,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  const Spacer(),
                   Material(
                     color: AppColors.surface,
                     shape: const CircleBorder(),
